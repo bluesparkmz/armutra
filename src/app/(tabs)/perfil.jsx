@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   TextInput,
   Keyboard,
+  Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -21,6 +24,10 @@ import {
   Save,
   Settings,
   X,
+  ChevronDown,
+  Sparkles,
+  Briefcase,
+  Send,
 } from "lucide-react-native";
 import LocationFields from "@/components/LocationFields";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
@@ -101,6 +108,146 @@ function IconButton({ onPress, children, active }) {
   );
 }
 
+/** Opções do menu "Postar" conforme o tipo de conta */
+function getCreateOptions(userType) {
+  const options = [];
+  if (userType === "freelancer" || userType === "empresa") {
+    options.push({
+      key: "service",
+      label: "Serviço",
+      hint: "Ofereça o seu trabalho",
+      icon: Sparkles,
+      path: "/create-service",
+    });
+  }
+  if (userType === "empresa") {
+    options.push({
+      key: "job",
+      label: "Vaga",
+      hint: "Encontre candidatos",
+      icon: Briefcase,
+      path: "/create-job",
+    });
+  }
+  options.push({
+    key: "post",
+    label: "Post",
+    hint: "Partilhe uma atualização",
+    icon: Send,
+    path: "/create-post",
+  });
+  return options;
+}
+
+function PostMenu({ insets, userType, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const options = getCreateOptions(userType);
+  const single = options.length === 1;
+
+  const handlePress = () => {
+    if (single) {
+      onSelect(options[0].path);
+    } else {
+      setOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.85}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          backgroundColor: ACCENT,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: radius.pill,
+        }}
+      >
+        <Plus size={18} color="#fff" strokeWidth={2.5} />
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Postar</Text>
+        {!single && <ChevronDown size={16} color="#fff" strokeWidth={2.5} />}
+      </TouchableOpacity>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
+          <View
+            style={{
+              position: "absolute",
+              top: insets.top + 60,
+              right: 20,
+              width: 250,
+              backgroundColor: BG,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: BORDER,
+              paddingVertical: 6,
+              elevation: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+            }}
+          >
+            {options.map((option, index) => {
+              const OptionIcon = option.icon;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  onPress={() => {
+                    setOpen(false);
+                    onSelect(option.path);
+                  }}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: BORDER,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: ACCENT_LIGHT,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <OptionIcon size={18} color={ACCENT_DARK} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: TEXT_MAIN }}>
+                      {option.label}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: TEXT_SUB, marginTop: 1 }}>
+                      {option.hint}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
   const tag = tagStyle();
   const accountLabel =
@@ -125,22 +272,7 @@ function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
       >
         <Text style={{ fontSize: 22, fontWeight: "800", color: TEXT_MAIN }}>Perfil</Text>
         <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={onPost}
-            activeOpacity={0.85}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              backgroundColor: ACCENT,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: radius.pill,
-            }}
-          >
-            <Plus size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Postar</Text>
-          </TouchableOpacity>
+          <PostMenu insets={insets} userType={user?.user_type} onSelect={onPost} />
           <IconButton onPress={onSettings}>
             <Settings size={18} color={TEXT_MAIN} />
           </IconButton>
@@ -210,48 +342,120 @@ function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
   );
 }
 
-function AuthFixedHeader({ insets, mode }) {
+function GoogleMark() {
   return (
-    <ScreenFixedHeader insets={insets}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: TEXT_MAIN }}>
-          {mode === "login" ? "Entrar" : "Criar conta"}
-        </Text>
-        <Text style={{ fontSize: 14, color: TEXT_SUB, marginTop: 6 }}>
-          Acesse o Armutra para configurar o seu perfil.
-        </Text>
-      </View>
-    </ScreenFixedHeader>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: BORDER,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={{ fontSize: 14, fontWeight: "800", color: "#4285F4", marginTop: -1 }}>G</Text>
+    </View>
   );
 }
 
-function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, loading }) {
+function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, loading, onClose }) {
+  const isLogin = mode === "login";
+  const authInputProps = {
+    placeholderTextColor: TEXT_SUB,
+    keyboardAppearance: "light",
+    style: inputStyle,
+  };
+
+  const handleGoogle = () => {
+    // Só UI por agora: o login com Google ainda não está ligado
+    Alert.alert("Google", "O login com Google estará disponível em breve.");
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: BG_SOFT }}>
-      <AuthFixedHeader insets={insets} mode={mode} />
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <TouchableOpacity
+        onPress={onClose}
+        activeOpacity={0.8}
+        style={{
+          position: "absolute",
+          top: insets.top + 12,
+          left: 16,
+          zIndex: 10,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: BG_SOFT,
+          borderWidth: 1,
+          borderColor: BORDER,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <X size={18} color={TEXT_MAIN} />
+      </TouchableOpacity>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          padding: 20,
-          paddingBottom: insets.bottom + 88,
-          gap: 12,
+          flexGrow: 1,
+          justifyContent: "center",
+          paddingHorizontal: 24,
+          paddingTop: insets.top + 24,
+          paddingBottom: insets.bottom + 24,
         }}
       >
         <View style={{ width: "100%", maxWidth: 420, alignSelf: "center", gap: 12 }}>
-          {mode === "register" && (
+          <View style={{ alignItems: "center", marginBottom: 12 }}>
+            <Text style={{ fontSize: 30, fontWeight: "800", color: TEXT_MAIN }}>Armutra</Text>
+            <Text style={{ fontSize: 14, color: TEXT_SUB, marginTop: 6, textAlign: "center" }}>
+              {isLogin ? "Entre na sua conta para continuar" : "Crie a sua conta gratuitamente"}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleGoogle}
+            activeOpacity={0.85}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              minHeight: 52,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: BORDER,
+              backgroundColor: BG,
+            }}
+          >
+            <GoogleMark />
+            <Text style={{ color: TEXT_MAIN, fontWeight: "700", fontSize: 15 }}>
+              Continuar com Google
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 4 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+            <Text style={{ fontSize: 12, color: TEXT_SUB }}>ou</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+          </View>
+
+          {!isLogin && (
             <>
               <TextInput
                 value={form.name}
                 onChangeText={(name) => setForm((current) => ({ ...current, name }))}
                 placeholder="Nome"
-                style={inputStyle}
+                {...authInputProps}
               />
               <TextInput
                 value={form.phone}
                 onChangeText={(phone) => setForm((current) => ({ ...current, phone }))}
                 placeholder="Telefone"
-                style={inputStyle}
+                keyboardType="phone-pad"
+                {...authInputProps}
               />
               <LocationFields
                 province={form.province}
@@ -270,14 +474,14 @@ function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, load
             placeholder="Email"
             autoCapitalize="none"
             keyboardType="email-address"
-            style={inputStyle}
+            {...authInputProps}
           />
           <TextInput
             value={form.password}
             onChangeText={(password) => setForm((current) => ({ ...current, password }))}
             placeholder="Senha"
             secureTextEntry
-            style={inputStyle}
+            {...authInputProps}
           />
           {error && <Text style={{ color: "#DC2626", fontSize: 13 }}>{error}</Text>}
           <TouchableOpacity
@@ -286,7 +490,6 @@ function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, load
             style={{
               backgroundColor: ACCENT,
               borderRadius: radius.md,
-              paddingVertical: 16,
               minHeight: 54,
               alignItems: "center",
               justifyContent: "center",
@@ -294,7 +497,7 @@ function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, load
             }}
           >
             <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
-              {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
+              {loading ? "Aguarde..." : isLogin ? "Entrar" : "Criar conta"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -302,7 +505,7 @@ function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, load
             style={{ alignItems: "center", paddingVertical: 12 }}
           >
             <Text style={{ color: ACCENT_DARK, fontWeight: "700" }}>
-              {mode === "login" ? "Criar nova conta" : "Já tenho conta"}
+              {isLogin ? "Criar nova conta" : "Já tenho conta"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -450,8 +653,8 @@ export default function PerfilScreen() {
   const [editSaving, setEditSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
-  const openCreatePost = () => {
-    router.push("/create-post");
+  const openCreate = (path) => {
+    router.push(path);
   };
 
   const openEdit = () => {
@@ -476,8 +679,7 @@ export default function PerfilScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
       quality: 0.8,
     });
 
@@ -558,6 +760,7 @@ export default function PerfilScreen() {
         onSubmit={handleAuth}
         error={authError}
         loading={submitting}
+        onClose={() => router.replace("/(tabs)/feed")}
       />
     );
   }
@@ -569,7 +772,7 @@ export default function PerfilScreen() {
       <ProfileFixedHeader
         insets={insets}
         user={user}
-        onPost={openCreatePost}
+        onPost={openCreate}
         onSettings={() => router.push("/settings")}
       />
 
@@ -738,60 +941,6 @@ export default function PerfilScreen() {
           </View>
         )}
 
-        <View style={{ ...cardStyle, marginBottom: 0 }}>
-          <SectionTitle title="Publicações" />
-          <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22, marginBottom: 14 }}>
-            Crie conteúdo para o feed do Armutra.
-          </Text>
-          <TouchableOpacity
-            onPress={openCreatePost}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: ACCENT,
-              borderRadius: radius.md,
-              paddingVertical: 14,
-              alignItems: "center",
-              marginBottom: 10,
-            }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Postar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/create-service")}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: BG_SOFT,
-              borderRadius: radius.md,
-              paddingVertical: 12,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: BORDER,
-              marginBottom: 10,
-            }}
-          >
-            <Text style={{ color: TEXT_MAIN, fontWeight: "600", fontSize: 14 }}>
-              Publicar serviço
-            </Text>
-          </TouchableOpacity>
-          {user?.user_type === "empresa" && (
-            <TouchableOpacity
-              onPress={() => router.push("/create-job")}
-              activeOpacity={0.85}
-              style={{
-                backgroundColor: BG_SOFT,
-                borderRadius: radius.md,
-                paddingVertical: 12,
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: BORDER,
-              }}
-            >
-              <Text style={{ color: TEXT_MAIN, fontWeight: "600", fontSize: 14 }}>
-                Publicar vaga
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
       </ScrollView>
     </View>
   );

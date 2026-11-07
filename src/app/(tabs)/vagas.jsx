@@ -21,7 +21,6 @@ const jobCategories = [
   "Design",
   "Geral",
 ];
-const jobTypes = ["Todos", "Full-time", "Part-time", "Freelancer", "Contrato"];
 
 function VagaRow({ vaga }) {
   const router = useRouter();
@@ -85,7 +84,6 @@ export default function VagasScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("Todos");
-  const [selectedType, setSelectedType] = useState("Todos");
   const [search, setSearch] = useState("");
   const { data: vagas = [], isLoading } = useQuery({
     queryKey: ["jobs"],
@@ -95,12 +93,11 @@ export default function VagasScreen() {
 
   const filtered = vagas.filter((v) => {
     const catMatch = selectedCategory === "Todos" || v.category === selectedCategory;
-    const typeMatch = selectedType === "Todos" || v.type === selectedType;
     const searchMatch =
       !search ||
       v.title?.toLowerCase().includes(search.toLowerCase()) ||
       v.company?.toLowerCase().includes(search.toLowerCase());
-    return catMatch && typeMatch && searchMatch;
+    return catMatch && searchMatch;
   });
 
   return (
@@ -124,13 +121,6 @@ export default function VagasScreen() {
           selected={selectedCategory}
           onSelect={setSelectedCategory}
           style={{ marginTop: 12 }}
-        />
-        <FilterChips
-          options={jobTypes}
-          selected={selectedType}
-          onSelect={setSelectedType}
-          showFilterIcon={false}
-          style={{ marginTop: 6 }}
         />
 
         <View

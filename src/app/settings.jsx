@@ -1,93 +1,38 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Alert,
-} from "react-native";
+import React from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  ArrowLeft,
-  Bell,
-  Lock,
-  Eye,
-  Trash2,
-  LogOut,
-  HelpCircle,
-  FileText,
-  ChevronRight,
-} from "lucide-react-native";
+import { ArrowLeft, Bell, UserRound, FileText, LogOut, ChevronRight } from "lucide-react-native";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
+import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { useAuth } from "@/utils/auth/useAuth";
-import { authApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
+import {
+  ACCENT_DARK,
+  ACCENT_LIGHT,
+  BG_SOFT,
+  BORDER,
+  CARD,
+  TEXT_MAIN,
+  TEXT_MUTED,
+  TEXT_SUB,
+} from "@/theme";
 
-const BLUE = "#2563EB";
-const RED = "#DC2626";
-const BG = "#F8FAFC";
-const CARD = "#FFFFFF";
+const DANGER = "#DC2626";
+const DANGER_SOFT = "#FEF2F2";
 
-function SettingRow({ icon: Icon, title, subtitle, onPress, action = null }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        backgroundColor: CARD,
-        borderBottomWidth: 1,
-        borderBottomColor: "#F1F5F9",
-      }}
-    >
-      <View
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          backgroundColor: BG,
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: 12,
-        }}
-      >
-        <Icon size={20} color={BLUE} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A" }}>
-          {title}
-        </Text>
-        {subtitle && (
-          <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      {action === "toggle" ? (
-        <Switch value={false} disabled style={{ marginLeft: 12 }} />
-      ) : (
-        <ChevronRight size={18} color="#94A3B8" />
-      )}
-    </TouchableOpacity>
-  );
-}
-
-function SectionHeader({ title }) {
+function SectionTitle({ title }) {
   return (
     <Text
       style={{
-        fontSize: 13,
-        fontWeight: "800",
-        color: "#94A3B8",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: BG,
+        fontSize: 12,
+        fontWeight: "700",
+        color: TEXT_SUB,
         textTransform: "uppercase",
-        letterSpacing: 0.5,
+        letterSpacing: 0.6,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 8,
       }}
     >
       {title}
@@ -95,18 +40,81 @@ function SectionHeader({ title }) {
   );
 }
 
+function Group({ children }) {
+  return (
+    <View
+      style={{
+        backgroundColor: CARD,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: BORDER,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function SettingRow({
+  icon: Icon,
+  title,
+  subtitle,
+  onPress,
+  danger = false,
+  showChevron = true,
+  last = false,
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: BORDER,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          backgroundColor: danger ? DANGER_SOFT : ACCENT_LIGHT,
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 14,
+        }}
+      >
+        <Icon size={19} color={danger ? DANGER : ACCENT_DARK} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: danger ? DANGER : TEXT_MAIN }}>
+          {title}
+        </Text>
+        {!!subtitle && (
+          <Text style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }}>{subtitle}</Text>
+        )}
+      </View>
+      {showChevron && <ChevronRight size={18} color={TEXT_MUTED} />}
+    </TouchableOpacity>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { auth, logout } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [privateProfile, setPrivateProfile] = useState(false);
+  const user = auth?.user;
 
   const handleLogout = () => {
-    Alert.alert("Sair", "Tem certeza que deseja sair da sua conta?", [
-      { text: "Cancelar", onPress: () => {}, style: "cancel" },
+    Alert.alert("Sair", "Tem a certeza que deseja sair da sua conta?", [
+      { text: "Cancelar", style: "cancel" },
       {
         text: "Sair",
+        style: "destructive",
         onPress: async () => {
           try {
             await logout();
@@ -116,216 +124,121 @@ export default function SettingsScreen() {
             Alert.alert("Erro", "Falha ao sair. Tente novamente.");
           }
         },
-        style: "destructive",
       },
     ]);
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Deletar conta",
-      "Esta ação é irreversível. Todos os seus dados serão permanentemente removidos.",
-      [
-        { text: "Cancelar", onPress: () => {}, style: "cancel" },
-        {
-          text: "Deletar",
-          onPress: async () => {
-            try {
-              // Implement delete account API call
-              // await authApi.deleteAccount(auth.user.id, auth.accessToken);
-              await logout();
-              router.replace("/");
-            } catch (error) {
-              logError("delete-account", error);
-              Alert.alert("Erro", "Falha ao deletar conta. Tente novamente.");
-            }
-          },
-          style: "destructive",
-        },
-      ]
-    );
-  };
-
   return (
-    <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: CARD,
-          borderBottomWidth: 1,
-          borderBottomColor: "#F1F5F9",
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
+    <View style={{ flex: 1, backgroundColor: BG_SOFT }}>
+      <ScreenFixedHeader insets={insets}>
+        <View
           style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            backgroundColor: BG,
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            gap: 12,
           }}
         >
-          <ArrowLeft size={20} color="#0F172A" />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: "#0F172A",
-            marginLeft: 12,
-          }}
-        >
-          Configurações
-        </Text>
-      </View>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: BG_SOFT,
+              borderWidth: 1,
+              borderColor: BORDER,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowLeft size={20} color={TEXT_MAIN} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }}>Configurações</Text>
+        </View>
+      </ScreenFixedHeader>
 
       <ScrollView
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 16,
-        }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
-        {/* Privacy Section */}
-        <SectionHeader title="Privacidade" />
-        <View style={{ marginBottom: 8 }}>
-          <SettingRow
-            icon={Eye}
-            title="Perfil privado"
-            subtitle="Apenas pessoas autorizadas podem ver seu perfil"
-            onPress={() => setPrivateProfile(!privateProfile)}
-            action="toggle"
-          />
-          <SettingRow
-            icon={Lock}
-            title="Alterar senha"
-            subtitle="Atualize sua senha com segurança"
-            onPress={() => router.push("/change-password")}
-          />
-        </View>
+        {user && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: CARD,
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              marginTop: 12,
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: BORDER,
+              gap: 14,
+            }}
+          >
+            <ArmutraAvatar uri={user.avatar_url} name={user.name} size={52} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN }} numberOfLines={1}>
+                {user.name}
+              </Text>
+              {!!user.email && (
+                <Text style={{ fontSize: 13, color: TEXT_SUB, marginTop: 2 }} numberOfLines={1}>
+                  {user.email}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
 
-        {/* Notifications Section */}
-        <SectionHeader title="Notificações" />
-        <View style={{ marginBottom: 8 }}>
+        <SectionTitle title="Conta" />
+        <Group>
+          <SettingRow
+            icon={UserRound}
+            title="Editar perfil"
+            subtitle="Nome, foto e localização"
+            onPress={() => router.push("/edit-profile")}
+          />
           <SettingRow
             icon={Bell}
-            title="Notificações push"
-            subtitle="Receba alertas em tempo real"
-            onPress={() => setNotificationsEnabled(!notificationsEnabled)}
-            action="toggle"
+            title="Notificações"
+            subtitle="Veja os seus alertas recentes"
+            onPress={() => router.push("/notifications")}
+            last
           />
-        </View>
+        </Group>
 
-        {/* Help Section */}
-        <SectionHeader title="Ajuda e informações" />
-        <View style={{ marginBottom: 8 }}>
-          <SettingRow
-            icon={HelpCircle}
-            title="Central de ajuda"
-            subtitle="Dúvidas frequentes e suporte"
-            onPress={() => router.push("/help")}
-          />
+        <SectionTitle title="Informações" />
+        <Group>
           <SettingRow
             icon={FileText}
             title="Política de privacidade"
-            subtitle="Leia nossa política completa"
+            subtitle="Como tratamos os seus dados"
             onPress={() => router.push("/privacy-policy")}
+            last
           />
+        </Group>
+
+        <View style={{ marginTop: 24 }}>
+          <Group>
+            <SettingRow
+              icon={LogOut}
+              title="Sair"
+              subtitle="Terminar a sessão atual"
+              onPress={handleLogout}
+              danger
+              showChevron={false}
+              last
+            />
+          </Group>
         </View>
 
-        {/* Account Section */}
-        <SectionHeader title="Conta" />
-        <View>
-          <TouchableOpacity
-            onPress={handleLogout}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              backgroundColor: CARD,
-              borderBottomWidth: 1,
-              borderBottomColor: "#F1F5F9",
-            }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                backgroundColor: "#FEF2F2",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 12,
-              }}
-            >
-              <LogOut size={20} color={RED} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: RED }}>
-                Sair
-              </Text>
-              <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                Finde a sessão atual
-              </Text>
-            </View>
-            <ChevronRight size={18} color="#94A3B8" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleDeleteAccount}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              backgroundColor: CARD,
-            }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                backgroundColor: "#FEF2F2",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 12,
-              }}
-            >
-              <Trash2 size={20} color={RED} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: RED }}>
-                Deletar conta
-              </Text>
-              <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                Esta ação é irreversível
-              </Text>
-            </View>
-            <ChevronRight size={18} color="#94A3B8" />
-          </TouchableOpacity>
-        </View>
-
-        {/* App Info */}
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 24,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 12, color: "#94A3B8" }}>
-            Armutra v1.0.0
-          </Text>
-          <Text style={{ fontSize: 11, color: "#CBD5E1", marginTop: 4 }}>
-            © 2024 Armutra. Todos os direitos reservados.
+        <View style={{ paddingVertical: 28, alignItems: "center" }}>
+          <Text style={{ fontSize: 12, color: TEXT_MUTED }}>Armutra v1.0.0</Text>
+          <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>
+            © {new Date().getFullYear()} Armutra. Todos os direitos reservados.
           </Text>
         </View>
       </ScrollView>

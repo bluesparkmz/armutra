@@ -20,6 +20,8 @@ import {
   Zap,
 } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
+import FullWidthImage from "@/components/FullWidthImage";
+import ImageViewerModal from "@/components/ImageViewerModal";
 import { armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
@@ -115,8 +117,8 @@ function normalize(type, item) {
       owner: item.company || company?.company_name || item.company_user?.name,
       avatar: item.avatar || item.logo || company?.logo_url || item.company_user?.avatar_url,
       role: company?.industry || item.category || "Empresa",
-      image: null,
-      location: item.location || [item.city, item.province].filter(Boolean).join(", ") || "Mocambique",
+      image: item.image || item.image_url || null,
+      location: item.location || [item.city, item.province].filter(Boolean).join(", ") || "Moçambique",
       postedAt: item.postedAt || formatDate(item.created_at),
       meta: [
         jobTypeLabels[item.job_type] || item.jobType || item.type,
@@ -126,6 +128,8 @@ function normalize(type, item) {
       likes: item.likes ?? item.likes_count ?? 0,
       comments: item.comments ?? item.comments_count ?? 0,
       cta: "Candidatar-se",
+      ctaLabel: "Salário",
+      ctaValue: salaryLabel(item) || "A negociar",
     };
   }
 
@@ -154,7 +158,13 @@ function normalize(type, item) {
       tags: [item.category, item.owner_type].filter(Boolean),
       likes: item.likes ?? item.likes_count ?? 0,
       comments: item.comments ?? item.comments_count ?? 0,
-      cta: "Solicitar servico",
+      cta: "Solicitar serviço",
+      ctaLabel: "Preço",
+      ctaValue:
+        priceFromItem(item) ||
+        displayMoney(item.price) ||
+        displayMoney(freelancer?.price_label) ||
+        "A negociar",
     };
   }
 
@@ -204,8 +214,8 @@ function Action({ icon: Icon, label, active, onPress }) {
       activeOpacity={0.75}
       style={{ minHeight: 40, flexDirection: "row", alignItems: "center", gap: 7 }}
     >
-      <Icon size={20} color={active ? "#EF4444" : "#64748B"} fill={active ? "#EF4444" : "transparent"} />
-      <Text style={{ color: "#475569", fontSize: 13, fontWeight: "800" }}>{label}</Text>
+      <Icon size={20} color={active ? "#EF4444" : TEXT_SUB} fill={active ? "#EF4444" : "transparent"} />
+      <Text style={{ color: TEXT_SUB, fontSize: 13, fontWeight: "600" }}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -222,6 +232,7 @@ export default function ContentDetailScreen() {
   const token = auth?.accessToken;
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["content-detail", type, id],
@@ -264,28 +275,25 @@ export default function ContentDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: CARD, paddingTop: insets.top }}>
       <View
         style={{
-          height: 60,
-          paddingHorizontal: 16,
+          height: 56,
+          paddingHorizontal: 12,
           backgroundColor: CARD,
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between"
+          justifyContent: "space-between",
+          borderBottomWidth: 1,
+          borderBottomColor: BORDER,
         }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.75}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
         >
-          <ArrowLeft size={24} color={TEXT_MAIN} />
+          <ArrowLeft size={22} color={TEXT_MAIN} />
         </TouchableOpacity>
         {detail && <Badge icon={Icon} label={detail.label} color={detail.accent} />}
       </View>
@@ -296,127 +304,187 @@ export default function ContentDetailScreen() {
         </View>
       ) : error && !detail ? (
         <View style={{ padding: 16 }}>
-          <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "900" }}>
-            Nao foi possivel abrir esta publicacao.
+          <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "700" }}>
+            Não foi possível abrir esta publicação.
           </Text>
         </View>
       ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        >
-          <View style={{ backgroundColor: CARD, paddingHorizontal: 24, paddingTop: 16 }}>
-            {detail.title && (
-              <Text style={{ color: TEXT_MAIN, fontSize: 28, fontWeight: "700", lineHeight: 34, marginBottom: 24 }}>
-                {detail.title}
-              </Text>
-            )}
-
+        <>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          >
+            {/* Autor */}
             <TouchableOpacity
               onPress={openOwner}
-              activeOpacity={0.82}
+              activeOpacity={0.8}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-                marginBottom: 24
+                paddingHorizontal: 16,
+                paddingTop: 14,
+                paddingBottom: 12,
               }}
             >
-              <ArmutraAvatar uri={detail.avatar} name={detail.owner || "Armutra"} size={40} borderRadius={20} />
-              <View style={{ flex: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                 <Text style={{ color: TEXT_SUB, fontSize: 14 }}>
-                    Posted in <Text style={{ color: TEXT_MAIN, fontWeight: "600" }}>{detail.role || "Geral"}</Text>
-                 </Text>
-                 <Text style={{ color: TEXT_SUB, fontSize: 13 }}>{detail.postedAt}</Text>
+              <ArmutraAvatar
+                uri={detail.avatar}
+                name={detail.owner || "Armutra"}
+                size={44}
+                borderRadius={22}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: TEXT_MAIN, fontSize: 15, fontWeight: "700" }} numberOfLines={1}>
+                  {detail.owner || "Armutra"}
+                </Text>
+                <Text style={{ color: TEXT_SUB, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                  {[detail.role, detail.postedAt].filter(Boolean).join(" · ")}
+                </Text>
               </View>
             </TouchableOpacity>
 
-            <View style={{ paddingBottom: 24 }}>
-              {!!detail.body && (
-                <Text style={{ color: TEXT_MAIN, fontSize: 15, lineHeight: 24 }}>
-                  {detail.body}
-                </Text>
-              )}
-
-              {/* Tags & Meta mapping to Project Type style */}
-              {(detail.tags.length > 0 || detail.meta.length > 0) && (
-                 <View style={{ marginTop: 24 }}>
-                    <Text style={{ color: TEXT_MAIN, fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
-                       Detalhes do Projeto
-                    </Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      {detail.location && (
-                        <View style={chipStyle}>
-                          <MapPin size={14} color={TEXT_MAIN} />
-                          <Text style={chipText}>{detail.location}</Text>
-                        </View>
-                      )}
-                      {detail.meta.map((meta) => (
-                        <View key={meta} style={chipStyle}>
-                          <Text style={[chipText]}>{meta}</Text>
-                        </View>
-                      ))}
-                      {detail.tags.map((tag) => (
-                        <View key={tag} style={chipStyle}>
-                          <Text style={[chipText]}>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                 </View>
-              )}
-            </View>
-
-            {detail.image && (
-              <Image
-                source={{ uri: detail.image }}
-                contentFit="cover"
-                style={{ width: "100%", height: 330, borderRadius: 16, backgroundColor: "#E2E8F0", marginBottom: 24 }}
-              />
+            {/* Título e texto */}
+            {!!detail.title && (
+              <Text
+                style={{
+                  color: TEXT_MAIN,
+                  fontSize: 20,
+                  fontWeight: "700",
+                  lineHeight: 27,
+                  paddingHorizontal: 16,
+                  marginBottom: 8,
+                }}
+              >
+                {detail.title}
+              </Text>
+            )}
+            {!!detail.body && (
+              <Text
+                style={{
+                  color: TEXT_MAIN,
+                  fontSize: 15,
+                  lineHeight: 23,
+                  paddingHorizontal: 16,
+                  marginBottom: 12,
+                }}
+              >
+                {detail.body}
+              </Text>
             )}
 
-            <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-              <Text style={{ color: TEXT_SUB, fontSize: 13, fontWeight: "600" }}>
-                {(detail.likes || 0) + (liked ? 1 : 0)} gostos · {detail.comments || 0} comentarios
-              </Text>
-            </View>
+            {/* Imagem em largura total */}
+            {!!detail.image && (
+              <TouchableOpacity activeOpacity={0.95} onPress={() => setViewerOpen(true)}>
+                <FullWidthImage uri={detail.image} />
+              </TouchableOpacity>
+            )}
 
+            {/* Interações */}
             <View
               style={{
-                marginTop: 12,
-                marginBottom: 24,
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: 4,
+              }}
+            >
+              <Text style={{ color: TEXT_SUB, fontSize: 13 }}>
+                {(detail.likes || 0) + (liked ? 1 : 0)} gostos · {detail.comments || 0} comentários
+              </Text>
+            </View>
+            <View
+              style={{
+                marginTop: 8,
                 borderTopWidth: 1,
                 borderBottomWidth: 1,
                 borderColor: BORDER,
-                paddingHorizontal: 24,
-                paddingVertical: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 4,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
             >
-              <Action icon={Heart} label="Gostar" active={liked} onPress={() => setLiked((value) => !value)} />
+              <Action
+                icon={Heart}
+                label="Gostar"
+                active={liked}
+                onPress={() => setLiked((value) => !value)}
+              />
               <Action icon={MessageCircle} label="Comentar" />
               <Action icon={Share2} label="Partilhar" />
               <Action icon={Bookmark} label="Guardar" />
             </View>
 
-            {detail.cta && (
-              <View style={{ 
-                paddingHorizontal: 24, 
-                paddingVertical: 16, 
-                flexDirection: "row", 
-                alignItems: "center", 
-                justifyContent: "space-between",
+            {/* Detalhes (vagas e serviços) */}
+            {(detail.tags.length > 0 || detail.meta.length > 0) && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+                <Text style={{ color: TEXT_MAIN, fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
+                  Detalhes
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {!!detail.location && (
+                    <View style={chipStyle}>
+                      <MapPin size={14} color={TEXT_MAIN} />
+                      <Text style={chipText}>{detail.location}</Text>
+                    </View>
+                  )}
+                  {detail.meta.map((meta) => (
+                    <View key={meta} style={chipStyle}>
+                      <Text style={chipText}>{meta}</Text>
+                    </View>
+                  ))}
+                  {detail.tags.map((tag) => (
+                    <View key={tag} style={chipStyle}>
+                      <Text style={chipText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Ação fixa em baixo */}
+          {!!detail.cta && (
+            <View
+              style={{
                 backgroundColor: CARD,
                 borderTopWidth: 1,
-                borderTopColor: BORDER
-              }}>
-                <View>
-                  <Text style={{ color: ACCENT_DARK, fontSize: 18, fontWeight: "700" }}>
-                    {salaryLabel(data) || "A negociar"}
+                borderTopColor: BORDER,
+                paddingHorizontal: 16,
+                paddingTop: 10,
+                paddingBottom: Math.max(insets.bottom, 12),
+              }}
+            >
+              {!!message && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    marginBottom: 8,
+                  }}
+                >
+                  <CheckCircle size={14} color={message.includes("enviad") ? ACCENT : "#DC2626"} />
+                  <Text
+                    style={{
+                      color: message.includes("enviad") ? ACCENT_DARK : "#DC2626",
+                      fontSize: 13,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {message}
                   </Text>
-                  <Text style={{ color: TEXT_SUB, fontSize: 12, marginTop: 2 }}>
-                    Salario
+                </View>
+              )}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={{ color: TEXT_SUB, fontSize: 11 }}>{detail.ctaLabel}</Text>
+                  <Text
+                    style={{ color: ACCENT_DARK, fontSize: 16, fontWeight: "700", marginTop: 1 }}
+                    numberOfLines={1}
+                  >
+                    {detail.ctaValue}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -424,48 +492,44 @@ export default function ContentDetailScreen() {
                   disabled={actionMutation.isPending}
                   activeOpacity={0.85}
                   style={{
-                    minHeight: 50,
-                    paddingHorizontal: 32,
-                    borderRadius: 25,
+                    flex: 1,
+                    minHeight: 46,
+                    borderRadius: 12,
                     backgroundColor: ACCENT,
                     alignItems: "center",
                     justifyContent: "center",
-                    flexDirection: "row",
-                    gap: 8,
                     opacity: actionMutation.isPending ? 0.65 : 1,
                   }}
                 >
                   <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-                    {actionMutation.isPending ? "Enviando..." : detail.cta}
+                    {actionMutation.isPending ? "A enviar..." : detail.cta}
                   </Text>
                 </TouchableOpacity>
               </View>
-            )}
-            {message && (
-              <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 7, justifyContent: "center" }}>
-                <CheckCircle size={15} color={message.includes("enviad") ? ACCENT : "#DC2626"} />
-                <Text style={{ color: message.includes("enviad") ? ACCENT_DARK : "#DC2626", fontSize: 13, fontWeight: "800" }}>
-                  {message}
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
+            </View>
+          )}
+        </>
       )}
+
+      <ImageViewerModal
+        visible={viewerOpen}
+        uri={detail?.image}
+        onClose={() => setViewerOpen(false)}
+      />
     </View>
   );
 }
 
 const chipStyle = {
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: CARD,
+  paddingHorizontal: 12,
+  paddingVertical: 7,
+  borderRadius: 999,
+  backgroundColor: BG,
   borderWidth: 1,
   borderColor: BORDER,
   flexDirection: "row",
   alignItems: "center",
-  gap: 6
+  gap: 6,
 };
 
 const chipText = {

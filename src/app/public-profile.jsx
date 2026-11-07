@@ -14,34 +14,45 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
+import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
-
-const BLUE = "#2563EB";
-const GREEN = "#10B981";
-const BG = "#F8FAFC";
+import {
+  ACCENT,
+  ACCENT_DARK,
+  ACCENT_LIGHT,
+  BG_SOFT,
+  BLACK,
+  BORDER,
+  CARD,
+  TEXT_MAIN,
+  TEXT_MUTED,
+  TEXT_SUB,
+} from "@/theme";
 
 function InfoPill({ label }) {
   if (!label) return null;
   return (
     <View
       style={{
-        backgroundColor: BLUE + "12",
+        backgroundColor: ACCENT_LIGHT,
         borderRadius: 999,
         paddingHorizontal: 12,
-        paddingVertical: 7,
+        paddingVertical: 6,
       }}
     >
-      <Text style={{ color: BLUE, fontSize: 12, fontWeight: "800" }}>{label}</Text>
+      <Text style={{ color: ACCENT_DARK, fontSize: 12, fontWeight: "600" }}>{label}</Text>
     </View>
   );
 }
 
 function Stat({ value, label }) {
   return (
-    <View style={{ flex: 1, alignItems: "center" }}>
-      <Text style={{ fontSize: 18, fontWeight: "900", color: "#0F172A" }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: "#64748B", marginTop: 3, textAlign: "center" }}>
+    <View style={{ flex: 1, alignItems: "center", paddingVertical: 14 }}>
+      <Text style={{ fontSize: 17, fontWeight: "800", color: TEXT_MAIN }} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={{ fontSize: 12, color: TEXT_SUB, marginTop: 3, textAlign: "center" }}>
         {label}
       </Text>
     </View>
@@ -55,14 +66,14 @@ function normalizeProfile(kind, data) {
       name: data.company_name,
       subtitle: data.industry || "Empresa",
       avatar: data.logo_url || data.user?.avatar_url,
-      location: [data.city, data.province].filter(Boolean).join(", ") || "Mocambique",
+      location: [data.city, data.province].filter(Boolean).join(", ") || "Moçambique",
       about: data.description || data.mission || "Empresa cadastrada no Armutra.",
       icon: Building2,
       tags: [data.industry, data.employees_range, data.website].filter(Boolean),
       stats: [
         { value: data.open_jobs || 0, label: "Vagas" },
         { value: data.rating || 0, label: "Rating" },
-        { value: data.total_reviews || 0, label: "Avaliacoes" },
+        { value: data.total_reviews || 0, label: "Avaliações" },
       ],
     };
   }
@@ -71,31 +82,40 @@ function normalizeProfile(kind, data) {
       name: data.user?.name,
       subtitle: data.profession || data.headline || "Freelancer",
       avatar: data.user?.avatar_url,
-      location: [data.user?.city, data.user?.province].filter(Boolean).join(", ") || "Mocambique",
+      location: [data.user?.city, data.user?.province].filter(Boolean).join(", ") || "Moçambique",
       about: data.bio || "Freelancer cadastrado no Armutra.",
       icon: UserRound,
-      tags: [data.category, data.skills, data.price_label ||
-        (data.hourly_rate != null
-          ? `${Number(data.hourly_rate).toLocaleString("pt-MZ")} MZN/h`
-          : null)].filter(Boolean),
+      tags: [
+        data.category,
+        data.skills,
+        data.price_label ||
+          (data.hourly_rate != null
+            ? `${Number(data.hourly_rate).toLocaleString("pt-MZ")} MZN/h`
+            : null),
+      ].filter(Boolean),
       stats: [
         { value: data.completed_jobs || 0, label: "Trabalhos" },
         { value: data.rating || 0, label: "Rating" },
-        { value: data.total_reviews || 0, label: "Avaliacoes" },
+        { value: data.total_reviews || 0, label: "Avaliações" },
       ],
     };
   }
   return {
     name: data.name,
-    subtitle: data.user_type === "empresa" ? "Empresa" : data.user_type === "freelancer" ? "Freelancer" : "Usuario",
+    subtitle:
+      data.user_type === "empresa"
+        ? "Empresa"
+        : data.user_type === "freelancer"
+          ? "Freelancer"
+          : "Utilizador",
     avatar: data.avatar_url,
-    location: [data.city, data.province].filter(Boolean).join(", ") || "Mocambique",
-    about: "Perfil publico no Armutra.",
+    location: [data.city, data.province].filter(Boolean).join(", ") || "Moçambique",
+    about: "Perfil público no Armutra.",
     icon: UserRound,
     tags: [data.user_type, data.phone].filter(Boolean),
     stats: [
-      { value: data.is_verified ? "Sim" : "Nao", label: "Verificado" },
-      { value: data.province || "-", label: "Provincia" },
+      { value: data.is_verified ? "Sim" : "Não", label: "Verificado" },
+      { value: data.province || "-", label: "Província" },
       { value: data.city || "-", label: "Cidade" },
     ],
   };
@@ -127,110 +147,97 @@ export default function PublicProfileScreen() {
   const Icon = profile?.icon || UserRound;
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}>
+    <View style={{ flex: 1, backgroundColor: BG_SOFT }}>
+      <ScreenFixedHeader insets={insets}>
         <View
           style={{
-            minHeight: 250,
-            backgroundColor: BLUE,
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: 64,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            gap: 12,
           }}
         >
           <TouchableOpacity
             onPress={() => router.back()}
+            activeOpacity={0.8}
             style={{
               width: 42,
               height: 42,
-              borderRadius: 12,
-              backgroundColor: "rgba(255,255,255,0.18)",
+              borderRadius: 21,
+              backgroundColor: BG_SOFT,
+              borderWidth: 1,
+              borderColor: BORDER,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 22,
             }}
           >
-            <ArrowLeft size={20} color="#fff" />
+            <ArrowLeft size={20} color={TEXT_MAIN} />
           </TouchableOpacity>
-
-          <View style={{ alignItems: "center" }}>
-            <ArmutraAvatar uri={profile?.avatar} name={profile?.name || "Armutra"} size={84} />
-            <Text style={{ color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 12, textAlign: "center" }}>
-              {isLoading ? "Carregando..." : profile?.name || "Perfil"}
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
-              <Icon size={15} color="rgba(255,255,255,0.82)" />
-              <Text style={{ color: "rgba(255,255,255,0.82)", fontSize: 14, fontWeight: "700" }}>
-                {profile?.subtitle || "Armutra"}
-              </Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }}>
-              <MapPin size={13} color="rgba(255,255,255,0.75)" />
-              <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{profile?.location}</Text>
-            </View>
-          </View>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }}>Perfil</Text>
         </View>
+      </ScreenFixedHeader>
 
-        <View style={{ paddingHorizontal: 16, marginTop: -44, gap: 16 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
+      >
+        {/* Identidade */}
+        <View
+          style={{
+            backgroundColor: CARD,
+            alignItems: "center",
+            paddingHorizontal: 20,
+            paddingTop: 24,
+            paddingBottom: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: BORDER,
+          }}
+        >
           <View
             style={{
-              backgroundColor: "#fff",
-              borderRadius: 18,
-              padding: 16,
-              shadowColor: "#0F172A",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 4,
+              borderWidth: 3,
+              borderColor: ACCENT_LIGHT,
+              borderRadius: 999,
+              padding: 2,
             }}
           >
-            {error ? (
-              <Text style={{ color: "#DC2626", fontWeight: "700" }}>
-                Nao foi possivel carregar este perfil. Veja o console do Expo.
-              </Text>
-            ) : (
-              <>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 14 }}>
-                  <CheckCircle size={15} color={GREEN} />
-                  <Text style={{ color: GREEN, fontWeight: "800", fontSize: 13 }}>Perfil publico</Text>
-                </View>
-                <View style={{ flexDirection: "row" }}>
-                  {(profile?.stats || []).map((stat, index) => (
-                    <React.Fragment key={stat.label}>
-                      {index > 0 && <View style={{ width: 1, backgroundColor: "#F1F5F9" }} />}
-                      <Stat value={stat.value} label={stat.label} />
-                    </React.Fragment>
-                  ))}
-                </View>
-              </>
-            )}
+            <ArmutraAvatar uri={profile?.avatar} name={profile?.name || "Armutra"} size={92} />
+          </View>
+          <Text
+            style={{
+              color: TEXT_MAIN,
+              fontSize: 22,
+              fontWeight: "800",
+              marginTop: 14,
+              textAlign: "center",
+            }}
+          >
+            {isLoading ? "A carregar..." : profile?.name || "Perfil"}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <Icon size={15} color={ACCENT_DARK} />
+            <Text style={{ color: ACCENT_DARK, fontSize: 14, fontWeight: "600" }}>
+              {profile?.subtitle || "Armutra"}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 }}>
+            <MapPin size={13} color={TEXT_MUTED} />
+            <Text style={{ color: TEXT_SUB, fontSize: 13 }}>{profile?.location}</Text>
           </View>
 
-          <View style={{ backgroundColor: "#fff", borderRadius: 18, padding: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: "900", color: "#0F172A", marginBottom: 10 }}>
-              Sobre
-            </Text>
-            <Text style={{ fontSize: 14, color: "#64748B", lineHeight: 21 }}>
-              {profile?.about || "Sem descricao."}
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-              {(profile?.tags || []).map((tag) => (
-                <InfoPill key={tag} label={tag} />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10 }}>
+          {/* Ações */}
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 18, width: "100%" }}>
             <TouchableOpacity
               onPress={() => setConnection((current) => (current === "none" ? "pending" : "none"))}
               activeOpacity={0.85}
               style={{
                 flex: 1,
-                backgroundColor: isPending ? "#fff" : BLUE,
+                backgroundColor: isPending ? CARD : ACCENT,
                 borderWidth: 1.5,
-                borderColor: BLUE,
-                minHeight: 50,
-                borderRadius: 14,
+                borderColor: ACCENT,
+                minHeight: 46,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 flexDirection: "row",
@@ -238,11 +245,17 @@ export default function PublicProfileScreen() {
               }}
             >
               {isPending ? (
-                <Clock size={18} color={BLUE} />
+                <Clock size={17} color={ACCENT_DARK} />
               ) : (
-                <UserPlus size={18} color="#fff" />
+                <UserPlus size={17} color="#fff" />
               )}
-              <Text style={{ color: isPending ? BLUE : "#fff", fontSize: 15, fontWeight: "800" }}>
+              <Text
+                style={{
+                  color: isPending ? ACCENT_DARK : "#fff",
+                  fontSize: 14,
+                  fontWeight: "700",
+                }}
+              >
                 {isPending ? "Pedido enviado" : "Conectar"}
               </Text>
             </TouchableOpacity>
@@ -251,21 +264,79 @@ export default function PublicProfileScreen() {
               activeOpacity={0.85}
               style={{
                 flex: 1,
-                backgroundColor: "#fff",
-                borderWidth: 1.5,
-                borderColor: "#E2E8F0",
-                minHeight: 50,
-                borderRadius: 14,
+                backgroundColor: BLACK,
+                minHeight: 46,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 flexDirection: "row",
                 gap: 8,
               }}
             >
-              <Briefcase size={18} color="#0F172A" />
-              <Text style={{ color: "#0F172A", fontSize: 15, fontWeight: "800" }}>Contactar</Text>
+              <Briefcase size={17} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Contactar</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Estatísticas */}
+        <View
+          style={{
+            backgroundColor: CARD,
+            marginTop: 8,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: BORDER,
+          }}
+        >
+          {error ? (
+            <Text style={{ color: "#DC2626", fontWeight: "600", padding: 16 }}>
+              Não foi possível carregar este perfil.
+            </Text>
+          ) : (
+            <View style={{ flexDirection: "row" }}>
+              {(profile?.stats || []).map((stat, index) => (
+                <React.Fragment key={stat.label}>
+                  {index > 0 && <View style={{ width: 1, backgroundColor: BORDER }} />}
+                  <Stat value={stat.value} label={stat.label} />
+                </React.Fragment>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Sobre */}
+        <View
+          style={{
+            backgroundColor: CARD,
+            marginTop: 8,
+            padding: 20,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: BORDER,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN, marginBottom: 8 }}>
+            Sobre
+          </Text>
+          <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 21 }}>
+            {profile?.about || "Sem descrição."}
+          </Text>
+          {(profile?.tags || []).length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+              {profile.tags.map((tag) => (
+                <InfoPill key={tag} label={tag} />
+              ))}
+            </View>
+          )}
+          {profile && !error && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 16 }}>
+              <CheckCircle size={14} color={ACCENT} />
+              <Text style={{ color: ACCENT_DARK, fontWeight: "600", fontSize: 12 }}>
+                Perfil público
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>

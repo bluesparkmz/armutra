@@ -21,6 +21,7 @@ import {
 } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import JobListItem from "@/components/JobListItem";
+import FullWidthImage from "@/components/FullWidthImage";
 import SkeletonCard from "@/components/SkeletonCard";
 import { HomeTopBar, HomeSearchBar } from "@/components/HomeHeader";
 import FeedPromoBanner from "@/components/FeedPromoBanner";
@@ -215,16 +216,9 @@ function PostCard({ item }) {
       )}
 
       {item.image && (
-        <Image
-          source={{ uri: item.image }}
-          style={{
-            ...feedCardImageBleed,
-            height: 260,
-            marginBottom: 12,
-            backgroundColor: "#F3F4F6",
-          }}
-          contentFit="cover"
-        />
+        <View style={{ ...feedCardImageBleed, marginBottom: 12 }}>
+          <FullWidthImage uri={item.image} maxHeight={300} />
+        </View>
       )}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 20 }}>
@@ -305,16 +299,9 @@ function ServicoCard({ item }) {
       </View>
 
       {item.image && (
-        <Image
-          source={{ uri: item.image }}
-          style={{
-            ...feedCardImageBleed,
-            height: 200,
-            marginBottom: 12,
-            backgroundColor: "#F3F4F6",
-          }}
-          contentFit="cover"
-        />
+        <View style={{ ...feedCardImageBleed, marginBottom: 12 }}>
+          <FullWidthImage uri={item.image} maxHeight={300} />
+        </View>
       )}
 
       <DetailRow icon={Banknote} text={priceFromItem(item) || displayMoney(item.price)} />
@@ -423,6 +410,7 @@ export default function FeedScreen() {
     <View style={{ flex: 1, backgroundColor: BG_SOFT }}>
       <ScreenFixedHeader insets={insets} paddingBottom={0}>
         <HomeTopBar
+          isLoggedIn={!!user}
           userName={user?.name}
           userAvatar={user?.avatar_url}
           onAvatarPress={() => router.push("/(tabs)/perfil")}

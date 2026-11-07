@@ -14,8 +14,9 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, ImagePlus, Send, Sparkles, Trash2, Type } from "lucide-react-native";
+import { ArrowLeft, Briefcase, ImagePlus, Send, Sparkles, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import FullWidthImage from "@/components/FullWidthImage";
 import LocationFields from "@/components/LocationFields";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { freelancerCategories } from "@/data/freelancersData";
@@ -97,7 +98,6 @@ export default function CreateContentScreen({ type }) {
   const token = auth?.accessToken;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [postMode, setPostMode] = useState("text");
   const [selectedImage, setSelectedImage] = useState(null);
   const [form, setForm] = useState({
     content: "",
@@ -130,19 +130,6 @@ export default function CreateContentScreen({ type }) {
     textAlignVertical: "top",
   };
 
-  const postModeButtonStyle = (active) => ({
-    flex: 1,
-    minHeight: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: active ? ACCENT : BORDER,
-    backgroundColor: active ? ACCENT_LIGHT : BG,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  });
-
   const meta = useMemo(() => {
     if (type === "service") {
       return {
@@ -169,13 +156,7 @@ export default function CreateContentScreen({ type }) {
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
-  const changePostMode = (mode) => {
-    setPostMode(mode);
-    setError(null);
-    if (mode === "text") {
-      setSelectedImage(null);
-    }
-  };
+  const removeImage = () => setSelectedImage(null);
 
   const pickPostImage = async () => {
     setError(null);
@@ -187,14 +168,12 @@ export default function CreateContentScreen({ type }) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsEditing: false,
       quality: 0.85,
     });
 
     if (!result.canceled && result.assets?.[0]) {
       setSelectedImage(result.assets[0]);
-      setPostMode("image");
     }
   };
 
@@ -222,37 +201,22 @@ export default function CreateContentScreen({ type }) {
     try {
       if (type === "post") {
         const content = form.content.trim();
-        if (postMode === "image") {
-          if (!selectedImage?.uri) {
-            setError("Escolha uma imagem para publicar.");
-            setSubmitting(false);
-            return;
-          }
-          const imageUrl = await uploadSelectedImage();
-          await armutraApi.createPost(
-            {
-              author_id: user.id,
-              post_type: "image",
-              content: content || null,
-              image_url: imageUrl,
-            },
-            token
-          );
-        } else {
-          if (!content) {
-            setError("Escreva alguma coisa para publicar.");
-            setSubmitting(false);
-            return;
-          }
-          await armutraApi.createPost(
-            {
-              author_id: user.id,
-              post_type: "text",
-              content,
-            },
-            token
-          );
+        const hasImage = !!selectedImage?.uri;
+        if (!content && !hasImage) {
+          setError("Escreva algo ou escolha uma imagem para publicar.");
+          setSubmitting(false);
+          return;
         }
+        const imageUrl = hasImage ? await uploadSelectedImage() : null;
+        await armutraApi.createPost(
+          {
+            author_id: user.id,
+            post_type: hasImage ? "image" : "text",
+            content: content || null,
+            ...(hasImage ? { image_url: imageUrl } : {}),
+          },
+          token
+        );
         queryClient.invalidateQueries({ queryKey: ["feed"] });
       }
 
@@ -323,48 +287,60 @@ export default function CreateContentScreen({ type }) {
   const renderImagePicker = (optionalLabel) => (
     <View style={imagePickerBoxStyle}>
       {selectedImage ? (
-        <>
-          <Image
-            source={{ uri: selectedImage.uri }}
-            style={{ width: "100%", height: optionalLabel ? 200 : 220 }}
-            contentFit="cover"
-          />
-          <View style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View>
+          <TouchableOpacity onPress={pickPostImage} activeOpacity={0.9}>
+            <FullWidthImage
+              uri={selectedImage.uri}
+              maxHeight={300}
+              ratio={
+                selectedImage.width && selectedImage.height
+                  ? selectedImage.width / selectedImage.height
+                  : undefined
+              }
+            />
+          </TouchableOpacity>
+          <View
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              flexDirection: "row",
+              gap: 8,
+            }}
+          >
             <TouchableOpacity
               onPress={pickPostImage}
-              activeOpacity={0.75}
+              activeOpacity={0.8}
               style={{
-                flex: 1,
-                minHeight: 44,
-                borderRadius: radius.md,
-                backgroundColor: ACCENT_LIGHT,
+                height: 36,
+                paddingHorizontal: 12,
+                borderRadius: 18,
+                backgroundColor: "rgba(17,24,39,0.72)",
                 alignItems: "center",
                 justifyContent: "center",
                 flexDirection: "row",
-                gap: 8,
+                gap: 6,
               }}
             >
-              <ImagePlus size={17} color={ACCENT_DARK} />
-              <Text style={{ color: ACCENT_DARK, fontSize: 13, fontWeight: "700" }}>
-                Trocar imagem
-              </Text>
+              <ImagePlus size={15} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>Trocar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setSelectedImage(null)}
-              activeOpacity={0.75}
+              onPress={removeImage}
+              activeOpacity={0.8}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.md,
-                backgroundColor: "#FEF2F2",
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "rgba(17,24,39,0.72)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Trash2 size={17} color="#DC2626" />
+              <Trash2 size={16} color="#fff" />
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       ) : (
         <TouchableOpacity
           onPress={pickPostImage}
@@ -428,54 +404,38 @@ export default function CreateContentScreen({ type }) {
         >
           {type === "post" ? (
             <>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <TouchableOpacity
-                  onPress={() => changePostMode("text")}
-                  activeOpacity={0.75}
-                  style={postModeButtonStyle(postMode === "text")}
-                >
-                  <Type size={17} color={postMode === "text" ? ACCENT_DARK : TEXT_SUB} />
-                  <Text
-                    style={{
-                      color: postMode === "text" ? ACCENT_DARK : TEXT_SUB,
-                      fontSize: 13,
-                      fontWeight: "700",
-                    }}
-                  >
-                    Texto
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => changePostMode("image")}
-                  activeOpacity={0.75}
-                  style={postModeButtonStyle(postMode === "image")}
-                >
-                  <ImagePlus size={17} color={postMode === "image" ? ACCENT_DARK : TEXT_SUB} />
-                  <Text
-                    style={{
-                      color: postMode === "image" ? ACCENT_DARK : TEXT_SUB,
-                      fontSize: 13,
-                      fontWeight: "700",
-                    }}
-                  >
-                    Imagem
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               <TextInput
                 value={form.content}
                 onChangeText={(value) => update("content", value)}
-                placeholder={
-                  postMode === "image" ? "Escreva uma legenda opcional..." : "O que quer partilhar?"
-                }
+                placeholder="O que quer partilhar?"
                 placeholderTextColor={TEXT_SUB}
                 multiline
-                style={[multilineStyle, { minHeight: postMode === "image" ? 92 : 140 }]}
+                style={[multilineStyle, { minHeight: selectedImage ? 92 : 160 }]}
               />
 
-              {postMode === "image" && renderImagePicker(false)}
-            </>
+              {selectedImage && renderImagePicker(false)}
+
+              {!selectedImage && (
+                <TouchableOpacity
+                  onPress={pickPostImage}
+                  activeOpacity={0.75}
+                  style={{
+                    alignSelf: "flex-start",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    minHeight: 44,
+                    paddingHorizontal: 16,
+                    borderRadius: radius.pill,
+                    backgroundColor: ACCENT_LIGHT,
+                  }}
+                >
+                  <ImagePlus size={18} color={ACCENT_DARK} />
+                  <Text style={{ color: ACCENT_DARK, fontSize: 13, fontWeight: "700" }}>
+                    Galeria
+                  </Text>
+                </TouchableOpacity>
+              )}            </>
           ) : (
             <>
               <TextInput

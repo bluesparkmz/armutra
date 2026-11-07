@@ -2,11 +2,30 @@ import { Tabs } from "expo-router";
 import { Home, Briefcase, Compass, Users, User } from "lucide-react-native";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/utils/auth/useAuth";
 import { BLACK, TEXT_SUB, BG, BORDER } from "@/theme";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
+  const { isAuthenticated } = useAuth();
+
+  const baseTabBarStyle = {
+    position: "absolute",
+    backgroundColor: BG,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    height: 64 + bottomInset,
+    paddingTop: 6,
+    paddingBottom: bottomInset,
+    paddingHorizontal: 8,
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+  };
+
 
   const renderTabIcon = (Icon, color, focused) => (
     <View
@@ -27,21 +46,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: BG,
-          borderTopWidth: 1,
-          borderTopColor: BORDER,
-          height: 64 + bottomInset,
-          paddingTop: 6,
-          paddingBottom: bottomInset,
-          paddingHorizontal: 8,
-          elevation: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-        },
+        tabBarStyle: baseTabBarStyle,
         tabBarActiveTintColor: BLACK,
         tabBarInactiveTintColor: TEXT_SUB,
         tabBarShowLabel: true,
@@ -88,6 +93,8 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: "Perfil",
+          // Sem sessão (login/registo) a barra inferior fica escondida
+          tabBarStyle: isAuthenticated ? baseTabBarStyle : [baseTabBarStyle, { display: "none" }],
           tabBarIcon: ({ color, focused }) => renderTabIcon(User, color, focused),
         }}
       />

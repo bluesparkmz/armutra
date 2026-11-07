@@ -3,13 +3,43 @@ import { View, Text, TouchableOpacity, TextInput } from "react-native";
 import { Bell, MessageCircle, Search, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
-import { BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
+import { ACCENT, BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
 
-/** Barra fixa ~50px: avatar + saudação + ícones */
-export function HomeTopBar({ userName, userAvatar, onAvatarPress }) {
+/** Barra fixa ~50px: avatar + saudação + ícones (ou só botão Entrar sem sessão) */
+export function HomeTopBar({ userName, userAvatar, onAvatarPress, isLoggedIn = !!userName, onLoginPress }) {
   const router = useRouter();
   const displayName = userName?.trim() || "visitante";
   const firstName = displayName.split(" ")[0];
+
+  if (!isLoggedIn) {
+    return (
+      <View
+        style={{
+          paddingHorizontal: 20,
+          height: 50,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text style={{ fontSize: 20, color: TEXT_MAIN, fontWeight: "800" }}>Armutra</Text>
+        <TouchableOpacity
+          onPress={onLoginPress || (() => router.push("/(tabs)/perfil"))}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: ACCENT,
+            paddingHorizontal: 20,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Entrar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View
