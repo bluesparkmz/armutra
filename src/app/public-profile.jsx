@@ -1,13 +1,12 @@
-import React, { useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Briefcase,
   Building2,
   CheckCircle,
-  Clock,
   MapPin,
   UserPlus,
   UserRound,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { armutraApi } from "@/utils/api";
+import useAuth from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 import {
   ACCENT,
@@ -139,11 +139,61 @@ export default function PublicProfileScreen() {
     onError: (queryError) => logError("public-profile", queryError, { kind, id }),
   });
 
-  // Só UI por agora: o pedido de conexão ainda não é enviado à API
-  const [connection, setConnection] = useState("none");
-  const isPending = connection === "pending";
+  // Conexão = seguir o utilizador para o manter de perto
+  const { auth } = useAuth();
+  const token = auth?.accessToken;
+  const queryClient = useQueryClient();
+  const targetUserId =
+    kind === "user" ? id : data?.user_id || data?.user?.id || null;
+  const isMe = !!targetUserId && auth?.user?.id === targetUserId;
 
-  const profile = normalizeProfile(kind, data);
+  const { data: connectionStatus } = useQuery({
+    queryKey: ["connection-status", targetUserId, !!token],
+    enabled: !!targetUserId && !!token && !isMe,
+    queryFn: () => armutraApi.getConnectionStatus(targetUserId, token),
+  });
+
+  const followMutation = useMutation({
+    mutationFn: (follow) =>
+      follow
+        ? armutraApi.followUser(targetUserId, token)
+        : armutraApi.unfollowUser(targetUserId, token),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["connection-status", targetUserId, !!token], result);
+    },
+    onError: (mutationError) => {
+      logError("follow-user", mutationError, { targetUserId });
+      Alert.alert("Erro", mutationError?.message || "Não foi possível actualizar a conexão.");
+    },
+  });
+
+  const { data: counts } = useQuery({
+    queryKey: ["connection-counts", targetUserId, connectionStatus?.seguidores],
+    enabled: !!targetUserId,
+    queryFn: () => armutraApi.getConnectionCounts(targetUserId),
+  });
+
+  const isFollowing = !!connectionStatus?.a_seguir_utilizador;
+
+  const handleConnect = () => {
+    if (!token) {
+      Alert.alert("Iniciar sessão", "Entre na sua conta para seguir este perfil.");
+      return;
+    }
+    if (!targetUserId) {
+      Alert.alert("Indisponível", "Não foi possível identificar este utilizador.");
+      return;
+    }
+    followMutation.mutate(!isFollowing);
+  };
+
+  const baseProfile = normalizeProfile(kind, data);
+  const profile = baseProfile && {
+    ...baseProfile,
+    stats: counts
+      ? [...baseProfile.stats.slice(0, 2), { value: counts.seguidores, label: "Seguidores" }]
+      : baseProfile.stats,
+  };
   const Icon = profile?.icon || UserRound;
 
   return (
@@ -228,12 +278,15 @@ export default function PublicProfileScreen() {
 
           {/* Ações */}
           <View style={{ flexDirection: "row", gap: 10, marginTop: 18, width: "100%" }}>
+            {!isMe && (
             <TouchableOpacity
-              onPress={() => setConnection((current) => (current === "none" ? "pending" : "none"))}
+              onPress={handleConnect}
+              disabled={followMutation.isPending}
               activeOpacity={0.85}
               style={{
                 flex: 1,
-                backgroundColor: isPending ? CARD : ACCENT,
+                opacity: followMutation.isPending ? 0.6 : 1,
+                backgroundColor: isFollowing ? CARD : ACCENT,
                 borderWidth: 1.5,
                 borderColor: ACCENT,
                 minHeight: 46,
@@ -244,21 +297,22 @@ export default function PublicProfileScreen() {
                 gap: 8,
               }}
             >
-              {isPending ? (
-                <Clock size={17} color={ACCENT_DARK} />
+              {isFollowing ? (
+                <CheckCircle size={17} color={ACCENT_DARK} />
               ) : (
                 <UserPlus size={17} color="#fff" />
               )}
               <Text
                 style={{
-                  color: isPending ? ACCENT_DARK : "#fff",
+                  color: isFollowing ? ACCENT_DARK : "#fff",
                   fontSize: 14,
                   fontWeight: "700",
                 }}
               >
-                {isPending ? "Pedido enviado" : "Conectar"}
+                {isFollowing ? "A seguir" : "Conectar"}
               </Text>
             </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               activeOpacity={0.85}

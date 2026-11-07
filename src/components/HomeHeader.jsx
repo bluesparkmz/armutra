@@ -2,12 +2,24 @@ import React from "react";
 import { View, Text, TouchableOpacity, TextInput } from "react-native";
 import { Bell, MessageCircle, Search, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
+import { armutraApi } from "@/utils/api";
+import useAuth from "@/utils/auth/useAuth";
 import { ACCENT, BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
 
 /** Barra fixa ~50px: avatar + saudação + ícones (ou só botão Entrar sem sessão) */
 export function HomeTopBar({ userName, userAvatar, onAvatarPress, isLoggedIn = !!userName, onLoginPress }) {
   const router = useRouter();
+  const { auth } = useAuth();
+  const token = auth?.accessToken;
+  const { data: unread } = useQuery({
+    queryKey: ["notifications", "unread-count", token],
+    enabled: !!token && isLoggedIn,
+    staleTime: 30 * 1000,
+    queryFn: () => armutraApi.getUnreadNotificationCount(token),
+  });
+  const unreadCount = unread?.nao_lidas || 0;
   const displayName = userName?.trim() || "visitante";
   const firstName = displayName.split(" ")[0];
 
@@ -99,17 +111,19 @@ export function HomeTopBar({ userName, userAvatar, onAvatarPress, isLoggedIn = !
           }}
         >
           <Bell size={18} color={TEXT_MAIN} strokeWidth={2} />
-          <View
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 9,
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: "#EF4444",
-            }}
-          />
+          {unreadCount > 0 && (
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 9,
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: "#EF4444",
+              }}
+            />
+          )}
         </TouchableOpacity>
       </View>
     </View>

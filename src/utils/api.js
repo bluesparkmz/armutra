@@ -221,6 +221,37 @@ export const armutraApi = {
     return data.map(mapFreelancer);
   },
   getUser: (userId) => apiRequest(`/users/${userId}`),
+  // Conexões (seguir para manter de perto)
+  getConnectionCounts: (userId) => apiRequest(`/connections/${userId}/counts`),
+  getConnectionStatus: (userId, token) =>
+    apiRequest(`/connections/${userId}/status`, {}, token),
+  followUser: (userId, token) =>
+    apiRequest(`/connections/${userId}`, { method: "POST" }, token),
+  unfollowUser: (userId, token) =>
+    apiRequest(`/connections/${userId}`, { method: "DELETE" }, token),
+  getFollowing: (token) => apiRequest("/connections/following", {}, token),
+  getFollowers: (token) => apiRequest("/connections/followers", {}, token),
+  // Pagamentos (SkyWallet via armutra-api; as chaves ficam só no servidor)
+  createSkyWalletPayment: (payload, token) =>
+    apiRequest("/payments/skywallet", { method: "POST", body: payload }, token),
+  getPayment: (paymentId, token) => apiRequest(`/payments/${paymentId}`, {}, token),
+  getPayments: (token) => apiRequest("/payments", {}, token),
+  // Anúncios / boost (vaga, serviço ou publicação)
+  getAdPlans: () => apiRequest("/ads/plans"),
+  getBoostable: (token) => apiRequest("/ads/boostable", {}, token),
+  getMyAds: (token) => apiRequest("/ads", {}, token),
+  getAd: (adId, token) => apiRequest(`/ads/${adId}`, {}, token),
+  createAd: (payload, token) => apiRequest("/ads", { method: "POST", body: payload }, token),
+  payAd: (adId, payload, token) =>
+    apiRequest(`/ads/${adId}/pay`, { method: "POST", body: payload }, token),
+  // Notificações
+  getNotifications: (token) => apiRequest("/notifications", {}, token),
+  getUnreadNotificationCount: (token) =>
+    apiRequest("/notifications/unread-count", {}, token),
+  markNotificationRead: (id, token) =>
+    apiRequest(`/notifications/${id}/read`, { method: "POST" }, token),
+  markAllNotificationsRead: (token) =>
+    apiRequest("/notifications/read-all", { method: "POST" }, token),
   getCompany: (companyId) => apiRequest(`/empresas/${companyId}`),
   getFreelancer: (freelancerId) => apiRequest(`/freelancers/${freelancerId}`),
   getUserExperiences: (userId) => apiRequest(`/profiles/${userId}/experiences`),

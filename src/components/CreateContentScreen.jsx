@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FullWidthImage from "@/components/FullWidthImage";
 import LocationFields from "@/components/LocationFields";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
-import { freelancerCategories } from "@/data/freelancersData";
+import { freelancerCategories } from "@/data/categories";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
 import { armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";

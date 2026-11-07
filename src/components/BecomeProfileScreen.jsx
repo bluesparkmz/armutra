@@ -5,7 +5,7 @@ import { Picker } from "@react-native-picker/picker";
 import { ArrowLeft, Building2, UserRoundCheck } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LocationFields from "@/components/LocationFields";
-import { freelancerCategories } from "@/data/freelancersData";
+import { freelancerCategories } from "@/data/categories";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
 import { authApi, armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";

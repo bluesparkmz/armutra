@@ -47,6 +47,10 @@ export default function RootLayout() {
           <Stack.Screen name="become-company" options={{ headerShown: false }} />
           <Stack.Screen name="become-freelancer" options={{ headerShown: false }} />
           <Stack.Screen name="public-profile" options={{ headerShown: false }} />
+          <Stack.Screen name="connections" options={{ headerShown: false }} />
+          <Stack.Screen name="payments" options={{ headerShown: false }} />
+          <Stack.Screen name="ads" options={{ headerShown: false }} />
+          <Stack.Screen name="boost" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />

@@ -1,51 +1,81 @@
-import React, { useMemo, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useMemo } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   Bell,
   Briefcase,
-  Building2,
   CheckCheck,
+  Heart,
   MessageCircle,
-  Sparkles,
-  UserRoundCheck,
+  MessageSquare,
+  Megaphone,
+  UserPlus,
+  Wallet,
 } from "lucide-react-native";
-import { notifications as initialNotifications } from "@/data/notificationsData";
+import { armutraApi } from "@/utils/api";
+import useAuth from "@/utils/auth/useAuth";
+import { logError } from "@/utils/logger";
 
 const BLUE = "#2563EB";
 const BG = "#F8FAFC";
 const CARD = "#FFFFFF";
 
 const notificationIcons = {
+  connection: UserPlus,
+  like: Heart,
+  comment: MessageSquare,
   job: Briefcase,
-  service: Sparkles,
-  profile: UserRoundCheck,
-  company: Building2,
   message: MessageCircle,
+  payment: Wallet,
+  ad: Megaphone,
 };
 
 const notificationColors = {
+  payment: "#16A34A",
+  ad: "#F59E0B",
+  connection: "#10B981",
+  like: "#EF4444",
+  comment: "#8B5CF6",
   job: "#2563EB",
-  service: "#8B5CF6",
-  profile: "#10B981",
-  company: "#F59E0B",
   message: "#0EA5E9",
 };
 
+function timeAgo(value) {
+  const date = new Date(value);
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (Number.isNaN(seconds) || seconds < 60) return "Agora";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} d`;
+  return date.toLocaleDateString("pt-MZ");
+}
+
 function NotificationCard({ item, onPress }) {
-  const Icon = notificationIcons[item.type] || Bell;
-  const color = notificationColors[item.type] || BLUE;
+  const Icon = notificationIcons[item.tipo] || Bell;
+  const color = notificationColors[item.tipo] || BLUE;
+  const unread = !item.lida;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.82}
       style={{
-        backgroundColor: item.unread ? "#EFF6FF" : CARD,
+        backgroundColor: unread ? "#EFF6FF" : CARD,
         borderWidth: 1,
-        borderColor: item.unread ? "#BFDBFE" : "#E2E8F0",
+        borderColor: unread ? "#BFDBFE" : "#E2E8F0",
         borderRadius: 16,
         padding: 14,
         flexDirection: "row",
@@ -75,17 +105,17 @@ function NotificationCard({ item, onPress }) {
             numberOfLines={1}
             style={{ flex: 1, fontSize: 15, fontWeight: "800", color: "#0F172A" }}
           >
-            {item.title}
+            {item.titulo}
           </Text>
           <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "700" }}>
-            {item.time}
+            {timeAgo(item.criado_em)}
           </Text>
         </View>
         <Text style={{ marginTop: 5, fontSize: 13, color: "#475569", lineHeight: 19 }}>
-          {item.message}
+          {item.mensagem}
         </Text>
       </View>
-      {item.unread && (
+      {unread && (
         <View
           style={{
             width: 8,
@@ -103,17 +133,38 @@ function NotificationCard({ item, onPress }) {
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [items, setItems] = useState(initialNotifications);
-  const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items]);
+  const queryClient = useQueryClient();
+  const { auth } = useAuth();
+  const token = auth?.accessToken;
 
-  const markAllRead = () => {
-    setItems((current) => current.map((item) => ({ ...item, unread: false })));
-  };
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
+    queryKey: ["notifications", "list", token],
+    enabled: !!token,
+    staleTime: 0,
+    queryFn: () => armutraApi.getNotifications(token),
+  });
+  const items = data || [];
+  const unreadCount = useMemo(() => items.filter((item) => !item.lida).length, [items]);
 
-  const markRead = (id) => {
-    setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, unread: false } : item))
-    );
+  const refreshAll = () => queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
+  const markAll = useMutation({
+    mutationFn: () => armutraApi.markAllNotificationsRead(token),
+    onSuccess: refreshAll,
+    onError: (e) => logError("notifications-read-all", e),
+  });
+
+  const markOne = useMutation({
+    mutationFn: (id) => armutraApi.markNotificationRead(id, token),
+    onSuccess: refreshAll,
+    onError: (e) => logError("notifications-read", e),
+  });
+
+  const handlePress = (item) => {
+    if (!item.lida) markOne.mutate(item.id);
+    if ((item.tipo === "connection" || item.tipo === "message") && item.actor_id) {
+      router.push({ pathname: "/public-profile", params: { kind: "user", id: item.actor_id } });
+    }
   };
 
   return (
@@ -142,15 +193,15 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: "900", color: "#0F172A" }}>
-            Notificacoes
+            Notificações
           </Text>
           <Text style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
             {unreadCount ? `${unreadCount} por ler` : "Tudo em dia"}
           </Text>
         </View>
         <TouchableOpacity
-          onPress={markAllRead}
-          disabled={!unreadCount}
+          onPress={() => markAll.mutate()}
+          disabled={!unreadCount || markAll.isPending}
           style={{
             width: 42,
             height: 42,
@@ -167,11 +218,24 @@ export default function NotificationsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          token ? <RefreshControl refreshing={isRefetching} onRefresh={refetch} /> : undefined
+        }
         contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: insets.bottom + 24 }}
       >
-        {items.length ? (
+        {!token ? (
+          <Text style={{ color: "#64748B", fontSize: 14, textAlign: "center", marginTop: 16 }}>
+            Entre na sua conta para ver as suas notificações.
+          </Text>
+        ) : isLoading ? (
+          <ActivityIndicator color={BLUE} style={{ marginTop: 24 }} />
+        ) : error ? (
+          <Text style={{ color: "#DC2626", fontWeight: "600" }}>
+            Não foi possível carregar as notificações.
+          </Text>
+        ) : items.length ? (
           items.map((item) => (
-            <NotificationCard key={item.id} item={item} onPress={() => markRead(item.id)} />
+            <NotificationCard key={item.id} item={item} onPress={() => handlePress(item)} />
           ))
         ) : (
           <View
@@ -186,7 +250,7 @@ export default function NotificationsScreen() {
           >
             <Bell size={28} color="#94A3B8" />
             <Text style={{ marginTop: 10, fontSize: 15, fontWeight: "800", color: "#0F172A" }}>
-              Sem notificacoes
+              Sem notificações
             </Text>
           </View>
         )}

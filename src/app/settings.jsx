@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Bell, UserRound, FileText, LogOut, ChevronRight } from "lucide-react-native";
+import { ArrowLeft, Bell, UserRound, Users, Wallet, Megaphone, FileText, LogOut, ChevronRight } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -200,6 +200,24 @@ export default function SettingsScreen() {
             title="Editar perfil"
             subtitle="Nome, foto e localização"
             onPress={() => router.push("/edit-profile")}
+          />
+          <SettingRow
+            icon={Users}
+            title="Conexões"
+            subtitle="Quem segue e quem o segue"
+            onPress={() => router.push("/connections")}
+          />
+          <SettingRow
+            icon={Megaphone}
+            title="Impulsionar"
+            subtitle="Destaque vagas, serviços e publicações"
+            onPress={() => router.push("/ads")}
+          />
+          <SettingRow
+            icon={Wallet}
+            title="Pagamentos"
+            subtitle="Pagar com SkyWallet (M-Pesa)"
+            onPress={() => router.push("/payments")}
           />
           <SettingRow
             icon={Bell}
