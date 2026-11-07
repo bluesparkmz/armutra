@@ -19,8 +19,8 @@ import {
   UserRound,
   Zap,
 } from "lucide-react-native";
-import MabassaAvatar from "@/components/MabassaAvatar";
-import { mabassaApi } from "@/utils/api";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
+import { armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 import { displayMoney, formatMzn, formatSalaryRange, priceFromItem } from "@/utils/formatMoney";
@@ -228,9 +228,9 @@ export default function ContentDetailScreen() {
     enabled: !snapshot && !!id,
     initialData: snapshot || undefined,
     queryFn: () => {
-      if (type === "servico") return mabassaApi.getService(id);
-      if (type === "vaga") return mabassaApi.getJob(id);
-      return mabassaApi.getPost(id);
+      if (type === "servico") return armutraApi.getService(id);
+      if (type === "vaga") return armutraApi.getJob(id);
+      return armutraApi.getPost(id);
     },
     staleTime: Infinity,
     refetchOnMount: false,
@@ -245,8 +245,8 @@ export default function ContentDetailScreen() {
   const actionMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("Entre na sua conta para continuar.");
-      if (type === "servico") return mabassaApi.requestService(id, { requester_user_id: user.id }, token);
-      if (type === "vaga") return mabassaApi.applyToJob(id, { applicant_user_id: user.id }, token);
+      if (type === "servico") return armutraApi.requestService(id, { requester_user_id: user.id }, token);
+      if (type === "vaga") return armutraApi.applyToJob(id, { applicant_user_id: user.id }, token);
       return null;
     },
     onSuccess: () => setMessage(type === "vaga" ? "Candidatura enviada." : "Pedido enviado."),
@@ -322,7 +322,7 @@ export default function ContentDetailScreen() {
                 marginBottom: 24
               }}
             >
-              <MabassaAvatar uri={detail.avatar} name={detail.owner || "Mabassa"} size={40} borderRadius={20} />
+              <ArmutraAvatar uri={detail.avatar} name={detail.owner || "Armutra"} size={40} borderRadius={20} />
               <View style={{ flex: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                  <Text style={{ color: TEXT_SUB, fontSize: 14 }}>
                     Posted in <Text style={{ color: TEXT_MAIN, fontWeight: "600" }}>{detail.role || "Geral"}</Text>

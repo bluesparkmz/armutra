@@ -27,7 +27,7 @@ export const notifications = [
     id: "4",
     type: "company",
     title: "Empresa verificada",
-    message: "O perfil da sua empresa ja pode publicar vagas no Mabassa.",
+    message: "O perfil da sua empresa ja pode publicar vagas no Armutra.",
     time: "Ontem",
     unread: false,
   },

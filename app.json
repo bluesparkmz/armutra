@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Mabassa",
-    "slug": "mabassa",
-    "scheme": "mabassa",
+    "name": "Armutra",
+    "slug": "armutra",
+    "scheme": "armutra",
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -54,7 +54,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Mabassa precisa acessar as suas fotos para publicar imagens no feed."
+          "photosPermission": "O Armutra precisa acessar as suas fotos para publicar imagens no feed."
         }
       ],
       "expo-web-browser"

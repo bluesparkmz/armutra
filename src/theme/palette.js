@@ -1,4 +1,4 @@
-/** Paleta Mabassa — verde primary único + neutros (sem azul/índigo/roxo) */
+/** Paleta Armutra — verde primary único + neutros (sem azul/índigo/roxo) */
 export const ACCENT = "#16A34A";
 export const ACCENT_LIGHT = "#DCFCE7";
 export const ACCENT_SOFT = "#ECFDF5";
@@ -40,14 +40,27 @@ export const cardShadow = {
   elevation: 2,
 };
 
+/** Padding horizontal interno dos cards do feed (usado também para imagens full-bleed) */
+export const FEED_CARD_PADDING = 16;
+
+/** Card de feed em largura total (edge-to-edge), separado por faixas do fundo */
 export const feedCardStyle = {
+  width: "100%",
+  alignSelf: "stretch",
   backgroundColor: CARD,
-  borderRadius: 16,
-  padding: 16,
-  marginBottom: 12,
-  borderWidth: 1,
+  borderRadius: 0,
+  paddingHorizontal: FEED_CARD_PADDING,
+  paddingVertical: 16,
+  marginBottom: 8,
+  borderTopWidth: 1,
+  borderBottomWidth: 1,
   borderColor: BORDER,
-  ...cardShadow,
+};
+
+/** Imagem que ocupa toda a largura do card (anula o padding horizontal) */
+export const feedCardImageBleed = {
+  marginHorizontal: -FEED_CARD_PADDING,
+  borderRadius: 0,
 };
 
 export function getGreeting() {

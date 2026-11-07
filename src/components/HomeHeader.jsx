@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, TextInput } from "react-native";
 import { Bell, MessageCircle, Search, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
 import { BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
 
 /** Barra fixa ~50px: avatar + saudação + ícones */
@@ -27,7 +27,7 @@ export function HomeTopBar({ userName, userAvatar, onAvatarPress }) {
         style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}
         disabled={!onAvatarPress}
       >
-        <MabassaAvatar uri={userAvatar} name={displayName} size={36} borderRadius={18} />
+        <ArmutraAvatar uri={userAvatar} name={displayName} size={36} borderRadius={18} />
         <View style={{ marginLeft: 10, flex: 1 }}>
           <Text style={{ fontSize: 11, color: TEXT_SUB, fontWeight: "500" }} numberOfLines={1}>
             {getGreeting()}

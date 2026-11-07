@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LocationFields from "@/components/LocationFields";
 import { freelancerCategories } from "@/data/freelancersData";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { authApi, mabassaApi } from "@/utils/api";
+import { authApi, armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 
@@ -85,7 +85,7 @@ export default function BecomeProfileScreen({ type }) {
     setError(null);
     try {
       if (type === "company") {
-        await mabassaApi.createCompanyProfile(
+        await armutraApi.createCompanyProfile(
           {
             user_id: user.id,
             company_name: form.company_name.trim(),
@@ -98,7 +98,7 @@ export default function BecomeProfileScreen({ type }) {
           token
         );
       } else {
-        await mabassaApi.createFreelancerProfile(
+        await armutraApi.createFreelancerProfile(
           {
             user_id: user.id,
             headline: form.profession.trim() || null,

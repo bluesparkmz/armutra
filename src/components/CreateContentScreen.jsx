@@ -20,7 +20,7 @@ import LocationFields from "@/components/LocationFields";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { freelancerCategories } from "@/data/freelancersData";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 import {
@@ -147,7 +147,7 @@ export default function CreateContentScreen({ type }) {
     if (type === "service") {
       return {
         title: "Publicar serviço",
-        subtitle: "Mostre o que você oferece no Mabassa.",
+        subtitle: "Mostre o que você oferece no Armutra.",
         icon: Sparkles,
       };
     }
@@ -207,7 +207,7 @@ export default function CreateContentScreen({ type }) {
       name: fileName,
       type: mimeType,
     });
-    const uploaded = await mabassaApi.uploadPostImage(formData, token);
+    const uploaded = await armutraApi.uploadPostImage(formData, token);
     return uploaded.image_url;
   };
 
@@ -229,7 +229,7 @@ export default function CreateContentScreen({ type }) {
             return;
           }
           const imageUrl = await uploadSelectedImage();
-          await mabassaApi.createPost(
+          await armutraApi.createPost(
             {
               author_id: user.id,
               post_type: "image",
@@ -244,7 +244,7 @@ export default function CreateContentScreen({ type }) {
             setSubmitting(false);
             return;
           }
-          await mabassaApi.createPost(
+          await armutraApi.createPost(
             {
               author_id: user.id,
               post_type: "text",
@@ -261,7 +261,7 @@ export default function CreateContentScreen({ type }) {
         if (selectedImage?.uri) {
           imageUrl = await uploadSelectedImage();
         }
-        await mabassaApi.createService(
+        await armutraApi.createService(
           {
             owner_user_id: user.id,
             owner_type: user.user_type === "empresa" ? "empresa" : "freelancer",
@@ -283,7 +283,7 @@ export default function CreateContentScreen({ type }) {
         if (selectedImage?.uri) {
           imageUrl = await uploadSelectedImage();
         }
-        await mabassaApi.createJob(
+        await armutraApi.createJob(
           {
             company_user_id: user.id,
             title: form.title.trim(),

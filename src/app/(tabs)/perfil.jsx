@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -23,9 +23,9 @@ import {
   X,
 } from "lucide-react-native";
 import LocationFields from "@/components/LocationFields";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { authApi, mabassaApi } from "@/utils/api";
+import { authApi, armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
@@ -164,11 +164,11 @@ function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
             padding: 2,
           }}
         >
-          <MabassaAvatar uri={user?.avatar_url} name={user?.name || "Perfil Mabassa"} size={72} />
+          <ArmutraAvatar uri={user?.avatar_url} name={user?.name || "Perfil Armutra"} size={72} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }} numberOfLines={2}>
-            {user?.name || "Perfil Mabassa"}
+            {user?.name || "Perfil Armutra"}
           </Text>
           <View
             style={{
@@ -218,7 +218,7 @@ function AuthFixedHeader({ insets, mode }) {
           {mode === "login" ? "Entrar" : "Criar conta"}
         </Text>
         <Text style={{ fontSize: 14, color: TEXT_SUB, marginTop: 6 }}>
-          Acesse o Mabassa para configurar o seu perfil.
+          Acesse o Armutra para configurar o seu perfil.
         </Text>
       </View>
     </ScreenFixedHeader>
@@ -346,7 +346,7 @@ function EditProfilePanel({
       <View style={{ alignItems: "center", marginBottom: 14 }}>
         <TouchableOpacity onPress={onPickAvatar} activeOpacity={0.8} disabled={avatarLoading}>
           <View>
-            <MabassaAvatar uri={form.avatar_url} name={form.name || "Perfil Mabassa"} size={86} />
+            <ArmutraAvatar uri={form.avatar_url} name={form.name || "Perfil Armutra"} size={86} />
             <View
               style={{
                 position: "absolute",
@@ -493,7 +493,7 @@ export default function PerfilScreen() {
 
     setAvatarUploading(true);
     try {
-      const uploaded = await mabassaApi.uploadAvatar(formData, auth?.accessToken);
+      const uploaded = await armutraApi.uploadAvatar(formData, auth?.accessToken);
       setEditForm((current) => ({ ...current, avatar_url: uploaded.image_url }));
     } catch (error) {
       logError("avatar-upload", error);
@@ -661,7 +661,7 @@ export default function PerfilScreen() {
         <View style={{ ...cardStyle }}>
           <SectionTitle title="Sobre" />
           <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22 }}>
-            Complete o seu perfil para aparecer melhor nas pesquisas do Mabassa. Aqui ficam os
+            Complete o seu perfil para aparecer melhor nas pesquisas do Armutra. Aqui ficam os
             dados principais da sua conta e as publicações que você criar no aplicativo.
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
@@ -691,7 +691,7 @@ export default function PerfilScreen() {
           <View style={{ ...cardStyle }}>
             <SectionTitle title="Conta profissional" />
             <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22 }}>
-              Configure como quer trabalhar no Mabassa.
+              Configure como quer trabalhar no Armutra.
             </Text>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               <TouchableOpacity
@@ -741,7 +741,7 @@ export default function PerfilScreen() {
         <View style={{ ...cardStyle, marginBottom: 0 }}>
           <SectionTitle title="Publicações" />
           <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22, marginBottom: 14 }}>
-            Crie conteúdo para o feed do Mabassa.
+            Crie conteúdo para o feed do Armutra.
           </Text>
           <TouchableOpacity
             onPress={openCreatePost}

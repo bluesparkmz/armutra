@@ -1,24 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Briefcase, MapPin, Clock, ChevronRight } from "lucide-react-native";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import { Briefcase } from "lucide-react-native";
+import JobListItem from "@/components/JobListItem";
 import ListScreenHeader from "@/components/ListScreenHeader";
 import FilterChips from "@/components/FilterChips";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
-import {
-  ACCENT,
-  ACCENT_DARK,
-  TEXT_MAIN,
-  TEXT_SUB,
-  BG_SOFT,
-  CARD,
-  cardStyle,
-  shadow,
-} from "@/theme";
+import { TEXT_MAIN, TEXT_SUB, BG_SOFT, BORDER, CARD } from "@/theme";
 
 const jobCategories = [
   "Todos",
@@ -32,9 +23,9 @@ const jobCategories = [
 ];
 const jobTypes = ["Todos", "Full-time", "Part-time", "Freelancer", "Contrato"];
 
-function VagaCard({ vaga }) {
+function VagaRow({ vaga }) {
   const router = useRouter();
-  
+
   const openDetail = () => {
     router.push({
       pathname: "/content-detail",
@@ -42,106 +33,51 @@ function VagaCard({ vaga }) {
     });
   };
 
+  const openCompany = () => {
+    const id = vaga.companyProfileId || vaga.companyUserId;
+    if (!id) return;
+    router.push({
+      pathname: "/public-profile",
+      params: { kind: vaga.companyProfileId ? "empresa" : "user", id },
+    });
+  };
+
   return (
-    <TouchableOpacity
+    <JobListItem
+      title={vaga.title}
+      company={vaga.company}
+      logo={vaga.logo}
+      location={vaga.location}
+      jobType={vaga.type}
+      salary={vaga.salary}
+      postedAt={vaga.postedAt}
       onPress={openDetail}
-      activeOpacity={0.92}
+      onPressCompany={openCompany}
+    />
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <View
+      pointerEvents="none"
       style={{
-        ...cardStyle,
-        padding: 24,
-        ...shadow.card,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: CARD,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: BORDER,
       }}
     >
-      {/* Top row */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            const id = vaga.companyProfileId || vaga.companyUserId;
-            if (!id) return;
-            router.push({
-              pathname: "/public-profile",
-              params: { kind: vaga.companyProfileId ? "empresa" : "user", id },
-            });
-          }}
-          activeOpacity={0.8}
-        >
-          <MabassaAvatar
-            uri={vaga.logo}
-            name={vaga.company}
-            size={48}
-            borderRadius={24}
-          />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 16 }}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "700",
-              color: TEXT_MAIN,
-              lineHeight: 22,
-            }}
-            numberOfLines={2}
-          >
-            {vaga.title}
-          </Text>
-        </View>
+      <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: BORDER }} />
+      <View style={{ flex: 1, marginLeft: 12, gap: 8 }}>
+        <View style={{ width: "65%", height: 12, borderRadius: 6, backgroundColor: BORDER }} />
+        <View style={{ width: "45%", height: 10, borderRadius: 5, backgroundColor: BORDER }} />
+        <View style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: BORDER }} />
       </View>
-
-      {/* Meta Info */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
-        <Text style={{ fontSize: 13, color: TEXT_SUB }}>
-          Posted in <Text style={{ fontWeight: "700", color: TEXT_MAIN }}>{vaga.category || vaga.company}</Text>
-        </Text>
-        <Text style={{ fontSize: 13, color: TEXT_SUB }}>
-          {vaga.postedAt}
-        </Text>
-      </View>
-
-      {/* Footer */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <View>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: ACCENT_DARK }}>
-            {vaga.salary}
-          </Text>
-          <Text style={{ fontSize: 12, color: TEXT_SUB, marginTop: 4 }}>
-            {vaga.type}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={openDetail}
-          style={{
-            backgroundColor: ACCENT,
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            borderRadius: 24,
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
-            Candidatar-se
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -153,15 +89,17 @@ export default function VagasScreen() {
   const [search, setSearch] = useState("");
   const { data: vagas = [], isLoading } = useQuery({
     queryKey: ["jobs"],
-    queryFn: mabassaApi.getJobs,
+    queryFn: armutraApi.getJobs,
     onError: (error) => logError("jobs-query", error),
   });
 
   const filtered = vagas.filter((v) => {
-    const catMatch =
-      selectedCategory === "Todos" || v.category === selectedCategory;
+    const catMatch = selectedCategory === "Todos" || v.category === selectedCategory;
     const typeMatch = selectedType === "Todos" || v.type === selectedType;
-    const searchMatch = !search || v.title?.toLowerCase().includes(search.toLowerCase()) || v.company?.toLowerCase().includes(search.toLowerCase());
+    const searchMatch =
+      !search ||
+      v.title?.toLowerCase().includes(search.toLowerCase()) ||
+      v.company?.toLowerCase().includes(search.toLowerCase());
     return catMatch && typeMatch && searchMatch;
   });
 
@@ -178,9 +116,7 @@ export default function VagasScreen() {
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 88,
-        }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}
         showsVerticalScrollIndicator={false}
       >
         <FilterChips
@@ -202,41 +138,31 @@ export default function VagasScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 10,
+            paddingHorizontal: 16,
+            paddingTop: 14,
+            paddingBottom: 8,
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: TEXT_MAIN }}>
             {filtered.length} vaga{filtered.length !== 1 ? "s" : ""}
           </Text>
-          <Text style={{ fontSize: 13, color: TEXT_SUB }}>Recentes</Text>
+          <Text style={{ fontSize: 12, color: TEXT_SUB }}>Recentes</Text>
         </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <View
-              key={index}
-              pointerEvents="none"
-              style={{
-                height: 180,
-                backgroundColor: CARD,
-                borderRadius: 24,
-                marginBottom: 16,
-              }}
-            />
-          ))
-        ) : filtered.length === 0 ? (
-          <View style={{ alignItems: "center", paddingTop: 40, gap: 12 }}>
-            <Briefcase size={48} color="#CBD5E1" />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: TEXT_SUB }}>
-              Nenhuma vaga encontrada
-            </Text>
-          </View>
-        ) : (
-          filtered.map((vaga) => <VagaCard key={vaga.id} vaga={vaga} />)
-        )}
+        <View style={{ width: "100%", borderTopWidth: 1, borderTopColor: BORDER }}>
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, index) => <SkeletonRow key={index} />)
+          ) : filtered.length === 0 ? (
+            <View style={{ alignItems: "center", paddingVertical: 40, gap: 12, backgroundColor: CARD }}>
+              <Briefcase size={40} color="#CBD5E1" />
+              <Text style={{ fontSize: 15, fontWeight: "600", color: TEXT_SUB }}>
+                Nenhuma vaga encontrada
+              </Text>
+            </View>
+          ) : (
+            filtered.map((vaga) => <VagaRow key={vaga.id} vaga={vaga} />)
+          )}
+        </View>
       </ScrollView>
     </View>
   );

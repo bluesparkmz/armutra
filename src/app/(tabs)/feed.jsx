@@ -18,16 +18,16 @@ import {
   Clock,
   Users,
   Banknote,
-  Briefcase,
 } from "lucide-react-native";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
+import JobListItem from "@/components/JobListItem";
 import SkeletonCard from "@/components/SkeletonCard";
 import { HomeTopBar, HomeSearchBar } from "@/components/HomeHeader";
 import FeedPromoBanner from "@/components/FeedPromoBanner";
 import FilterChips from "@/components/FilterChips";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { useUser } from "@/utils/auth/useUser";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
 import { displayMoney, salaryFromItem, priceFromItem } from "@/utils/formatMoney";
 import {
@@ -40,7 +40,7 @@ import {
   BG_SOFT,
   BORDER,
   feedCardStyle,
-  jobTypeBadgeStyle,
+  feedCardImageBleed,
 } from "@/theme";
 
 const feedTypes = ["Todos", "Posts", "Vagas", "Serviços", "Empresas"];
@@ -80,16 +80,6 @@ function TypeBadge({ label, color = ACCENT }) {
       }}
     >
       <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label}</Text>
-    </View>
-  );
-}
-
-function JobTypeBadge({ jobType }) {
-  if (!jobType) return null;
-  const { bg, color } = jobTypeBadgeStyle(jobType);
-  return (
-    <View style={{ backgroundColor: bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-      <Text style={{ fontSize: 11, fontWeight: "600", color }}>{jobType}</Text>
     </View>
   );
 }
@@ -171,12 +161,12 @@ function PrimaryButton({ label, onPress }) {
       activeOpacity={0.85}
       style={{
         backgroundColor: BLACK,
-        paddingHorizontal: 20,
-        paddingVertical: 11,
-        borderRadius: 22,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 16,
       }}
     >
-      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 12 }}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -208,7 +198,7 @@ function PostCard({ item }) {
         activeOpacity={0.8}
         style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
       >
-        <MabassaAvatar uri={item.avatar} name={item.author} size={44} borderRadius={22} />
+        <ArmutraAvatar uri={item.avatar} name={item.author} size={44} borderRadius={22} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={{ fontSize: 15, fontWeight: "700", color: TEXT_MAIN }}>{item.author}</Text>
           {!!item.role && (
@@ -227,7 +217,12 @@ function PostCard({ item }) {
       {item.image && (
         <Image
           source={{ uri: item.image }}
-          style={{ width: "100%", height: 200, borderRadius: 12, marginBottom: 12 }}
+          style={{
+            ...feedCardImageBleed,
+            height: 260,
+            marginBottom: 12,
+            backgroundColor: "#F3F4F6",
+          }}
           contentFit="cover"
         />
       )}
@@ -260,59 +255,24 @@ function PostCard({ item }) {
   );
 }
 
-// ── VAGA card (estilo job list) ───────────────────────────────────
+// ── VAGA (linha compacta, estilo lista profissional) ──────────────
 function VagaCard({ item }) {
   const router = useRouter();
-  const skills = parseSkills(item);
 
   return (
-    <TouchableOpacity
+    <JobListItem
+      title={item.title}
+      company={item.company}
+      logo={item.avatar}
+      location={item.location}
+      jobType={item.jobType}
+      salary={salaryFromItem(item) || displayMoney(item.salary)}
+      postedAt={item.postedAt}
       onPress={() => openContentDetail(router, item)}
-      activeOpacity={0.92}
-      style={feedCardStyle}
-    >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
-        <TouchableOpacity onPress={() => openPublicProfile(router, item)} activeOpacity={0.8}>
-          <MabassaAvatar uri={item.avatar} name={item.company} size={48} borderRadius={24} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN, lineHeight: 22 }} numberOfLines={2}>
-            {item.title}
-          </Text>
-          {!!item.company && (
-            <Text style={{ fontSize: 13, color: TEXT_SUB, marginTop: 4 }} numberOfLines={1}>
-              {item.company}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-        <TypeBadge label="Vaga" color="#2563EB" />
-        <JobTypeBadge jobType={item.jobType} />
-      </View>
-
-      <DetailRow icon={Banknote} text={salaryFromItem(item) || displayMoney(item.salary)} />
-      <DetailRow icon={Briefcase} text={item.experience || item.category} />
-      <DetailRow icon={MapPin} text={item.location} />
-
-      {!!item.description && (
-        <Text style={{ fontSize: 13, color: TEXT_SUB, lineHeight: 19, marginTop: 4 }} numberOfLines={2}>
-          {item.description}
-        </Text>
-      )}
-
-      <SkillTags skills={skills} />
-
-      <CardFooter left={item.postedAt} right={item.applicants} />
-
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-        <PrimaryButton label="Candidatar-se" onPress={() => openContentDetail(router, item)} />
-      </View>
-    </TouchableOpacity>
+      onPressCompany={() => openPublicProfile(router, item)}
+    />
   );
 }
-
 // ── SERVIÇO card ──────────────────────────────────────────────────
 function ServicoCard({ item }) {
   const router = useRouter();
@@ -326,7 +286,7 @@ function ServicoCard({ item }) {
     >
       <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
         <TouchableOpacity onPress={() => openPublicProfile(router, item)} activeOpacity={0.8}>
-          <MabassaAvatar uri={item.avatar} name={item.company} size={48} borderRadius={24} />
+          <ArmutraAvatar uri={item.avatar} name={item.company} size={48} borderRadius={24} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN, lineHeight: 22 }} numberOfLines={2}>
@@ -347,7 +307,12 @@ function ServicoCard({ item }) {
       {item.image && (
         <Image
           source={{ uri: item.image }}
-          style={{ width: "100%", height: 150, borderRadius: 12, marginBottom: 12, backgroundColor: "#F3F4F6" }}
+          style={{
+            ...feedCardImageBleed,
+            height: 200,
+            marginBottom: 12,
+            backgroundColor: "#F3F4F6",
+          }}
           contentFit="cover"
         />
       )}
@@ -379,7 +344,7 @@ function EmpresaCard({ item }) {
     <View style={feedCardStyle}>
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
         <TouchableOpacity onPress={() => openPublicProfile(router, item)} activeOpacity={0.8}>
-          <MabassaAvatar uri={item.avatar} name={item.company} size={48} borderRadius={24} />
+          <ArmutraAvatar uri={item.avatar} name={item.company} size={48} borderRadius={24} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN }} numberOfLines={2}>
@@ -435,7 +400,7 @@ export default function FeedScreen() {
     error,
   } = useQuery({
     queryKey: ["feed"],
-    queryFn: () => mabassaApi.getFeed(),
+    queryFn: () => armutraApi.getFeed(),
     staleTime: 0,
     refetchOnMount: "always",
     onError: (queryError) => logError("feed-query", queryError),
@@ -487,13 +452,13 @@ export default function FeedScreen() {
           </Text>
         </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
+        <View style={{ width: "100%" }}>
           {loading
             ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
             : filtered.map((item) => <FeedCard key={item.id} item={item} />)}
 
           {!loading && error && (
-            <View style={{ alignItems: "center", paddingTop: 48, gap: 8 }}>
+            <View style={{ alignItems: "center", paddingTop: 48, paddingHorizontal: 20, gap: 8 }}>
               <Text style={{ fontSize: 16, fontWeight: "600", color: TEXT_SUB }}>
                 Não foi possível carregar o feed
               </Text>
@@ -504,7 +469,7 @@ export default function FeedScreen() {
           )}
 
           {!loading && !error && filtered.length === 0 && (
-            <View style={{ alignItems: "center", paddingTop: 48, gap: 8 }}>
+            <View style={{ alignItems: "center", paddingTop: 48, paddingHorizontal: 20, gap: 8 }}>
               <Text style={{ fontSize: 16, fontWeight: "600", color: TEXT_SUB }}>
                 Nenhum resultado
               </Text>

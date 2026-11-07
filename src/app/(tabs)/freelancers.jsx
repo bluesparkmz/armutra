@@ -10,11 +10,11 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Users, CheckCircle } from "lucide-react-native";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
 import StarRating from "@/components/StarRating";
 import ListScreenHeader from "@/components/ListScreenHeader";
 import FilterChips from "@/components/FilterChips";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
 import { displayMoney } from "@/utils/formatMoney";
 import {
@@ -62,7 +62,7 @@ function FreelancerCard({ freelancer, cardWidth }) {
       {/* Avatar + Status */}
       <View style={{ alignItems: "center", marginBottom: 16 }}>
         <View style={{ position: "relative" }}>
-          <MabassaAvatar
+          <ArmutraAvatar
             uri={freelancer.photo}
             name={freelancer.name}
             size={64}
@@ -188,7 +188,7 @@ export default function FreelancersScreen() {
   const [search, setSearch] = useState("");
   const { data: freelancers = [], isLoading } = useQuery({
     queryKey: ["freelancers"],
-    queryFn: mabassaApi.getFreelancers,
+    queryFn: armutraApi.getFreelancers,
     onError: (error) => logError("freelancers-query", error),
   });
 

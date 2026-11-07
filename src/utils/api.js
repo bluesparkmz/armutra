@@ -153,7 +153,7 @@ export function mapCompany(company) {
     location: [company.city, company.province].filter(Boolean).join(", ") || "Mocambique",
     employees: company.employees_range || "Nao informado",
     openJobs: company.open_jobs || 0,
-    description: company.description || company.mission || "Empresa cadastrada no Mabassa.",
+    description: company.description || company.mission || "Empresa cadastrada no Armutra.",
     raw: company,
   };
 }
@@ -181,7 +181,7 @@ export function mapFreelancer(profile) {
   };
 }
 
-export const mabassaApi = {
+export const armutraApi = {
   getFeed: async (type = null) => {
     const params = new URLSearchParams();
     if (type) params.set("type", type);

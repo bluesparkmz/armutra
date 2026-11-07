@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import { Image } from "expo-image";
 import { ACCENT, ACCENT_DARK } from "@/theme";
 
-/** Fallback initials — tons de verde (referência Mabassa) */
+/** Fallback initials — tons de verde (referência Armutra) */
 const AVATAR_GREENS = [ACCENT, ACCENT_DARK, "#22C55E", "#10B981", "#059669"];
 
 function normalizeUri(uri) {
@@ -12,7 +12,7 @@ function normalizeUri(uri) {
   return value.length > 0 ? value : null;
 }
 
-export default function MabassaAvatar({ uri, name, size = 44, borderRadius, style }) {
+export default function ArmutraAvatar({ uri, name, size = 44, borderRadius, style }) {
   const [error, setError] = useState(false);
   const imageUri = normalizeUri(uri);
   const radius = borderRadius !== undefined ? borderRadius : size / 2;

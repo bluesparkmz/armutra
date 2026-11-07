@@ -1,11 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, Building2, CheckCircle, MapPin, UserRound } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  CheckCircle,
+  Clock,
+  MapPin,
+  UserPlus,
+  UserRound,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MabassaAvatar from "@/components/MabassaAvatar";
-import { mabassaApi } from "@/utils/api";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
+import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
 
 const BLUE = "#2563EB";
@@ -47,7 +56,7 @@ function normalizeProfile(kind, data) {
       subtitle: data.industry || "Empresa",
       avatar: data.logo_url || data.user?.avatar_url,
       location: [data.city, data.province].filter(Boolean).join(", ") || "Mocambique",
-      about: data.description || data.mission || "Empresa cadastrada no Mabassa.",
+      about: data.description || data.mission || "Empresa cadastrada no Armutra.",
       icon: Building2,
       tags: [data.industry, data.employees_range, data.website].filter(Boolean),
       stats: [
@@ -63,7 +72,7 @@ function normalizeProfile(kind, data) {
       subtitle: data.profession || data.headline || "Freelancer",
       avatar: data.user?.avatar_url,
       location: [data.user?.city, data.user?.province].filter(Boolean).join(", ") || "Mocambique",
-      about: data.bio || "Freelancer cadastrado no Mabassa.",
+      about: data.bio || "Freelancer cadastrado no Armutra.",
       icon: UserRound,
       tags: [data.category, data.skills, data.price_label ||
         (data.hourly_rate != null
@@ -81,7 +90,7 @@ function normalizeProfile(kind, data) {
     subtitle: data.user_type === "empresa" ? "Empresa" : data.user_type === "freelancer" ? "Freelancer" : "Usuario",
     avatar: data.avatar_url,
     location: [data.city, data.province].filter(Boolean).join(", ") || "Mocambique",
-    about: "Perfil publico no Mabassa.",
+    about: "Perfil publico no Armutra.",
     icon: UserRound,
     tags: [data.user_type, data.phone].filter(Boolean),
     stats: [
@@ -103,12 +112,16 @@ export default function PublicProfileScreen() {
     queryKey: ["public-profile", kind, id],
     enabled: !!id,
     queryFn: () => {
-      if (kind === "empresa") return mabassaApi.getCompany(id);
-      if (kind === "freelancer") return mabassaApi.getFreelancer(id);
-      return mabassaApi.getUser(id);
+      if (kind === "empresa") return armutraApi.getCompany(id);
+      if (kind === "freelancer") return armutraApi.getFreelancer(id);
+      return armutraApi.getUser(id);
     },
     onError: (queryError) => logError("public-profile", queryError, { kind, id }),
   });
+
+  // Só UI por agora: o pedido de conexão ainda não é enviado à API
+  const [connection, setConnection] = useState("none");
+  const isPending = connection === "pending";
 
   const profile = normalizeProfile(kind, data);
   const Icon = profile?.icon || UserRound;
@@ -141,14 +154,14 @@ export default function PublicProfileScreen() {
           </TouchableOpacity>
 
           <View style={{ alignItems: "center" }}>
-            <MabassaAvatar uri={profile?.avatar} name={profile?.name || "Mabassa"} size={84} />
+            <ArmutraAvatar uri={profile?.avatar} name={profile?.name || "Armutra"} size={84} />
             <Text style={{ color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 12, textAlign: "center" }}>
               {isLoading ? "Carregando..." : profile?.name || "Perfil"}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
               <Icon size={15} color="rgba(255,255,255,0.82)" />
               <Text style={{ color: "rgba(255,255,255,0.82)", fontSize: 14, fontWeight: "700" }}>
-                {profile?.subtitle || "Mabassa"}
+                {profile?.subtitle || "Armutra"}
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }}>
@@ -207,21 +220,52 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: BLUE,
-              minHeight: 54,
-              borderRadius: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: 8,
-            }}
-          >
-            <Briefcase size={18} color="#fff" />
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "900" }}>Contactar</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => setConnection((current) => (current === "none" ? "pending" : "none"))}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                backgroundColor: isPending ? "#fff" : BLUE,
+                borderWidth: 1.5,
+                borderColor: BLUE,
+                minHeight: 50,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: 8,
+              }}
+            >
+              {isPending ? (
+                <Clock size={18} color={BLUE} />
+              ) : (
+                <UserPlus size={18} color="#fff" />
+              )}
+              <Text style={{ color: isPending ? BLUE : "#fff", fontSize: 15, fontWeight: "800" }}>
+                {isPending ? "Pedido enviado" : "Conectar"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                backgroundColor: "#fff",
+                borderWidth: 1.5,
+                borderColor: "#E2E8F0",
+                minHeight: 50,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: 8,
+              }}
+            >
+              <Briefcase size={18} color="#0F172A" />
+              <Text style={{ color: "#0F172A", fontSize: 15, fontWeight: "800" }}>Contactar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>

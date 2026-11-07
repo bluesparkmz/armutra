@@ -23,7 +23,7 @@ export default function PromoBanner({ onPress }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
           <Sparkles size={14} color={colors.primary} />
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary, letterSpacing: 0.5 }}>
-            MABASSA
+            ARMUTRA
           </Text>
         </View>
         <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, lineHeight: 24 }}>

@@ -20,9 +20,9 @@ import {
   X,
 } from "lucide-react-native";
 import LocationFields from "@/components/LocationFields";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 
@@ -112,7 +112,7 @@ export default function EditProfileScreen() {
       name: fileName,
       type: mimeType,
     });
-    const uploaded = await mabassaApi.uploadPostImage(formData, token);
+    const uploaded = await armutraApi.uploadPostImage(formData, token);
     return uploaded.image_url;
   };
 
@@ -146,7 +146,7 @@ export default function EditProfileScreen() {
         updateData.avatar = avatarUrl;
       }
 
-      await mabassaApi.updateProfile(user.id, updateData, token);
+      await armutraApi.updateProfile(user.id, updateData, token);
       
       Alert.alert("Sucesso", "Perfil atualizado com sucesso!", [
         { text: "OK", onPress: () => router.back() },
@@ -240,7 +240,7 @@ export default function EditProfileScreen() {
                 contentFit="cover"
               />
             ) : (
-              <MabassaAvatar
+              <ArmutraAvatar
                 uri={user?.avatar}
                 name={user?.name}
                 size={120}

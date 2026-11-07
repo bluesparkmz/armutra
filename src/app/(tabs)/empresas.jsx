@@ -10,10 +10,10 @@ import {
   Briefcase,
   ChevronRight,
 } from "lucide-react-native";
-import MabassaAvatar from "@/components/MabassaAvatar";
+import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ListScreenHeader from "@/components/ListScreenHeader";
 import FilterChips from "@/components/FilterChips";
-import { mabassaApi } from "@/utils/api";
+import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
 import {
   ACCENT,
@@ -60,7 +60,7 @@ function EmpresaCard({ empresa }) {
       <View
         style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}
       >
-        <MabassaAvatar
+        <ArmutraAvatar
           uri={empresa.logo}
           name={empresa.name}
           size={56}
@@ -163,7 +163,7 @@ export default function EmpresasScreen() {
   const [search, setSearch] = useState("");
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas"],
-    queryFn: mabassaApi.getCompanies,
+    queryFn: armutraApi.getCompanies,
     onError: (error) => logError("companies-query", error),
   });
 

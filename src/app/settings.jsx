@@ -322,10 +322,10 @@ export default function SettingsScreen() {
           }}
         >
           <Text style={{ fontSize: 12, color: "#94A3B8" }}>
-            Mabassa v1.0.0
+            Armutra v1.0.0
           </Text>
           <Text style={{ fontSize: 11, color: "#CBD5E1", marginTop: 4 }}>
-            © 2024 Mabassa. Todos os direitos reservados.
+            © 2024 Armutra. Todos os direitos reservados.
           </Text>
         </View>
       </ScrollView>
