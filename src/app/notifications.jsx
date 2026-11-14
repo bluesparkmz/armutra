@@ -162,7 +162,18 @@ export default function NotificationsScreen() {
 
   const handlePress = (item) => {
     if (!item.lida) markOne.mutate(item.id);
-    if ((item.tipo === "connection" || item.tipo === "message") && item.actor_id) {
+    if (item.tipo === "message") {
+      router.push({
+        pathname: "/messages",
+        params: { conversationId: item.ref_id || "", userId: item.actor_id || "" },
+      });
+      return;
+    }
+    if (item.tipo === "job") {
+      router.push("/minhas-vagas");
+      return;
+    }
+    if (item.tipo === "connection" && item.actor_id) {
       router.push({ pathname: "/public-profile", params: { kind: "user", id: item.actor_id } });
     }
   };

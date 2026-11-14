@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, CheckCircle2, Clock, Wallet, XCircle } from "lucide-react-native";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
-import { armutraApi } from "@/utils/api";
+import { armutraApi, paymentStatus } from "@/utils/api";
 import useAuth from "@/utils/auth/useAuth";
 import { formatAmount, formatDateTime as formatDate } from "@/utils/format";
 import { logError } from "@/utils/logger";
@@ -42,6 +42,12 @@ const STATUS_META = {
   failed: { label: "Falhou", color: DANGER, Icon: XCircle },
 };
 
+const SUBSCRIPTION_LABEL = {
+  active: "Activa",
+  cancelled: "Cancelada",
+  expired: "Expirada",
+};
+
 function Field({ label, hint, ...props }) {
   return (
     <View style={{ marginBottom: 14 }}>
@@ -50,6 +56,8 @@ function Field({ label, hint, ...props }) {
       </Text>
       <TextInput
         placeholderTextColor={TEXT_MUTED}
+        selectionColor={ACCENT}
+        cursorColor={ACCENT}
         {...props}
         style={{
           borderWidth: 1,
@@ -102,11 +110,7 @@ function ActivePayment({ payment }) {
         marginBottom: 16,
       }}
     >
-      {pending ? (
-        <ActivityIndicator color={meta.color} />
-      ) : (
-        <meta.Icon size={36} color={meta.color} />
-      )}
+      {pending ? <ActivityIndicator color={meta.color} /> : <meta.Icon size={36} color={meta.color} />}
       <Text style={{ fontSize: 18, fontWeight: "800", color: TEXT_MAIN, marginTop: 10 }}>
         {formatAmount(payment.amount, payment.currency)}
       </Text>
@@ -127,14 +131,14 @@ function ActivePayment({ payment }) {
       </Text>
       <Text style={{ fontSize: 13, color: TEXT_SUB, marginTop: 6, textAlign: "center" }}>
         {pending
-          ? `Confirme o PIN M-Pesa no telemóvel +258 ${payment.msisdn}.`
+          ? `Confirme o PIN M-Pesa no telemóvel${payment.msisdn ? ` +258 ${payment.msisdn}` : ""}.`
           : payment.status === "failed"
-            ? payment.error || "O pagamento foi cancelado ou recusado."
+            ? payment.error || payment.message || "O pagamento foi cancelado ou recusado."
             : `Referência ${payment.reference || payment.order_id}`}
       </Text>
-      <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8 }}>
-        Pedido {payment.order_id}
-      </Text>
+      {!!payment.order_id && (
+        <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8 }}>Pedido {payment.order_id}</Text>
+      )}
     </View>
   );
 }
@@ -150,41 +154,48 @@ export default function PaymentsScreen() {
   const [amount, setAmount] = useState("1");
   const [description, setDescription] = useState("Teste Armutra");
   const [formError, setFormError] = useState("");
-  const [activeId, setActiveId] = useState(null);
+  const [activeOrderId, setActiveOrderId] = useState(null);
+  const [snapshot, setSnapshot] = useState(null);
 
-  const history = useQuery({
-    queryKey: ["payments", "list", token],
+  const billing = useQuery({
+    queryKey: ["billing", token],
     enabled: !!token,
     staleTime: 0,
-    queryFn: () => armutraApi.getPayments(token),
+    queryFn: () => armutraApi.getBilling(token),
+    refetchInterval: (query) => {
+      if (!activeOrderId) return false;
+      const match = (query.state.data?.payments || []).find((item) => item.order_id === activeOrderId);
+      return !match || match.status === "pending" ? POLL_INTERVAL_MS : false;
+    },
   });
 
-  // Polling enquanto o pagamento estiver pendente
-  const active = useQuery({
-    queryKey: ["payments", "detail", activeId],
-    enabled: !!token && !!activeId,
-    staleTime: 0,
-    queryFn: () => armutraApi.getPayment(activeId, token),
-    refetchInterval: (query) =>
-      query.state.data?.status === "pending" ? POLL_INTERVAL_MS : false,
-    refetchIntervalInBackground: false,
-  });
+  const matched = (billing.data?.payments || []).find((item) => item.order_id === activeOrderId);
+  const activePayment = matched || snapshot;
 
-  // Quando o estado final chega, actualiza o histórico e o contador de notificações
-  const finalStatus = active.data?.status;
   React.useEffect(() => {
-    if (finalStatus === "success" || finalStatus === "failed") {
-      queryClient.invalidateQueries({ queryKey: ["payments", "list"] });
+    if (activePayment?.status === "success" || activePayment?.status === "failed") {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-  }, [finalStatus, queryClient]);
+  }, [activePayment?.status, queryClient]);
 
   const pay = useMutation({
-    mutationFn: (payload) => armutraApi.createSkyWalletPayment(payload, token),
-    onSuccess: (payment) => {
-      queryClient.setQueryData(["payments", "detail", payment.id], payment);
-      setActiveId(payment.id);
-      queryClient.invalidateQueries({ queryKey: ["payments", "list"] });
+    mutationFn: (payload) => armutraApi.createMpesaOrder(payload, token),
+    onSuccess: (order, variables) => {
+      const next = {
+        id: order.order_id,
+        order_id: order.order_id,
+        amount: order.amount,
+        currency: order.currency || "MZN",
+        status: paymentStatus(order.status),
+        reference: order.reference,
+        msisdn: variables.msisdn,
+        description: variables.description,
+        message: order.message,
+        error: paymentStatus(order.status) === "failed" ? order.message : null,
+      };
+      setSnapshot(next);
+      setActiveOrderId(order.order_id);
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
     },
     onError: (error) => {
       logError("skywallet-pay", error);
@@ -192,8 +203,8 @@ export default function PaymentsScreen() {
     },
   });
 
-  const activePayment = active.data;
   const isPending = pay.isPending || activePayment?.status === "pending";
+  const mpesaEnabled = billing.data?.mpesaEnabled !== false;
 
   const submit = () => {
     setFormError("");
@@ -204,15 +215,16 @@ export default function PaymentsScreen() {
       setFormError("Número M-Pesa inválido. Use 84xxxxxxx ou 85xxxxxxx.");
       return;
     }
-    const value = Number(amount.replace(",", "."));
+    const value = Number(String(amount).replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) {
       setFormError("Indique um valor maior que zero.");
       return;
     }
     pay.mutate({
       msisdn: phone,
-      amount: value.toFixed(2),
-      description: description.trim() || undefined,
+      purpose: "payment",
+      amount: Number(value.toFixed(2)),
+      description: description.trim() || "Teste Armutra",
     });
   };
 
@@ -255,17 +267,14 @@ export default function PaymentsScreen() {
           </Text>
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
-                refreshing={history.isRefetching}
-                onRefresh={() => history.refetch()}
+                refreshing={billing.isRefetching}
+                onRefresh={() => billing.refetch()}
                 tintColor={ACCENT}
               />
             }
@@ -296,30 +305,18 @@ export default function PaymentsScreen() {
                   <Wallet size={19} color={ACCENT_DARK} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "800", color: TEXT_MAIN }}>
-                    Pagar com SkyWallet
-                  </Text>
-                  <Text style={{ fontSize: 12, color: TEXT_SUB }}>Pagamento M-Pesa</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: TEXT_MAIN }}>Pagar com SkyWallet</Text>
+                  <Text style={{ fontSize: 12, color: TEXT_SUB }}>Pagamento M-Pesa de teste</Text>
                 </View>
               </View>
 
-              <Field
-                label="Número M-Pesa"
-                value={msisdn}
-                onChangeText={setMsisdn}
-                placeholder="84xxxxxxx"
-                keyboardType="phone-pad"
-                maxLength={16}
-                editable={!isPending}
-                hint="Receberá um pedido de PIN neste número."
-              />
               <Field
                 label="Valor (MZN)"
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="1.00"
                 keyboardType="decimal-pad"
-                editable={!isPending}
+                editable={!isPending && mpesaEnabled}
               />
               <Field
                 label="Descrição"
@@ -327,18 +324,32 @@ export default function PaymentsScreen() {
                 onChangeText={setDescription}
                 placeholder="Teste Armutra"
                 maxLength={120}
-                editable={!isPending}
+                editable={!isPending && mpesaEnabled}
+              />
+              <Field
+                label="Número M-Pesa"
+                value={msisdn}
+                onChangeText={setMsisdn}
+                placeholder="84xxxxxxx"
+                keyboardType="phone-pad"
+                maxLength={16}
+                editable={!isPending && mpesaEnabled}
+                hint="Receberá um pedido de PIN neste número."
               />
 
-              {!!formError && (
-                <Text style={{ color: DANGER, fontWeight: "600", fontSize: 13, marginBottom: 12 }}>
-                  {formError}
+              {!mpesaEnabled && (
+                <Text style={{ color: WARNING, fontWeight: "600", fontSize: 13, marginBottom: 12 }}>
+                  O M-Pesa está desligado neste momento.
                 </Text>
+              )}
+
+              {!!formError && (
+                <Text style={{ color: DANGER, fontWeight: "600", fontSize: 13, marginBottom: 12 }}>{formError}</Text>
               )}
 
               <TouchableOpacity
                 onPress={submit}
-                disabled={isPending}
+                disabled={isPending || !mpesaEnabled}
                 activeOpacity={0.85}
                 style={{
                   backgroundColor: ACCENT,
@@ -348,7 +359,7 @@ export default function PaymentsScreen() {
                   justifyContent: "center",
                   flexDirection: "row",
                   gap: 8,
-                  opacity: isPending ? 0.6 : 1,
+                  opacity: isPending || !mpesaEnabled ? 0.6 : 1,
                 }}
               >
                 {pay.isPending && <ActivityIndicator color="#fff" />}
@@ -362,27 +373,51 @@ export default function PaymentsScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text
-              style={{ fontSize: 16, fontWeight: "800", color: TEXT_MAIN, marginTop: 24, marginBottom: 10 }}
-            >
+            {(billing.data?.subscriptions || []).length > 0 && (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: TEXT_MAIN, marginTop: 24, marginBottom: 10 }}>
+                  Subscrições
+                </Text>
+                <View style={{ gap: 10 }}>
+                  {billing.data.subscriptions.map((item) => (
+                    <View
+                      key={item.id}
+                      style={{
+                        backgroundColor: CARD,
+                        borderWidth: 1,
+                        borderColor: BORDER,
+                        borderRadius: 14,
+                        padding: 14,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "800", color: TEXT_MAIN }}>{item.plan?.name || "Plano"}</Text>
+                      <Text style={{ color: TEXT_SUB, marginTop: 4, fontSize: 12 }}>
+                        {SUBSCRIPTION_LABEL[item.status] || item.status}
+                        {item.ends_at ? ` · até ${formatDate(item.ends_at)}` : ""}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <Text style={{ fontSize: 16, fontWeight: "800", color: TEXT_MAIN, marginTop: 24, marginBottom: 10 }}>
               Histórico
             </Text>
 
-            {history.isLoading ? (
+            {billing.isLoading ? (
               <ActivityIndicator color={ACCENT} style={{ marginTop: 12 }} />
-            ) : history.error ? (
-              <Text style={{ color: DANGER, fontWeight: "600" }}>
-                Não foi possível carregar o histórico.
-              </Text>
-            ) : (history.data || []).length ? (
+            ) : billing.error ? (
+              <Text style={{ color: DANGER, fontWeight: "600" }}>Não foi possível carregar o histórico.</Text>
+            ) : (billing.data?.payments || []).length ? (
               <View style={{ gap: 10 }}>
-                {history.data.map((payment) => (
+                {billing.data.payments.map((payment) => (
                   <TouchableOpacity
                     key={payment.id}
                     activeOpacity={0.85}
                     onPress={() => {
-                      queryClient.setQueryData(["payments", "detail", payment.id], payment);
-                      setActiveId(payment.id);
+                      setSnapshot(payment);
+                      setActiveOrderId(payment.order_id);
                     }}
                     style={{
                       backgroundColor: CARD,
@@ -400,7 +435,7 @@ export default function PaymentsScreen() {
                         {formatAmount(payment.amount, payment.currency)}
                       </Text>
                       <Text style={{ fontSize: 12, color: TEXT_SUB, marginTop: 2 }} numberOfLines={1}>
-                        {[payment.description, `+258 ${payment.msisdn}`].filter(Boolean).join(" · ")}
+                        {payment.description}
                       </Text>
                       <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>
                         {formatDate(payment.criado_em)}

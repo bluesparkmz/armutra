@@ -27,6 +27,7 @@ import { HomeTopBar, HomeSearchBar } from "@/components/HomeHeader";
 import FeedPromoBanner from "@/components/FeedPromoBanner";
 import FilterChips from "@/components/FilterChips";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
+import { useAuth } from "@/utils/auth/useAuth";
 import { useUser } from "@/utils/auth/useUser";
 import { armutraApi } from "@/utils/api";
 import { logError } from "@/utils/logger";
@@ -175,17 +176,26 @@ function PrimaryButton({ label, onPress }) {
 // ── POST card ─────────────────────────────────────────────────────
 function PostCard({ item }) {
   const router = useRouter();
+  const { auth } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(item.likes);
   const scale = useRef(new Animated.Value(1)).current;
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (liked || !auth?.accessToken || !item.postId) return;
     Animated.sequence([
       Animated.timing(scale, { toValue: 1.25, duration: 100, useNativeDriver: true }),
       Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start();
-    setLiked((v) => !v);
-    setLikesCount((c) => (liked ? c - 1 : c + 1));
+    setLiked(true);
+    setLikesCount((c) => c + 1);
+    try {
+      await armutraApi.likePost(item.postId, auth.accessToken);
+    } catch (error) {
+      setLiked(false);
+      setLikesCount((c) => Math.max(0, c - 1));
+      logError("feed-like", error);
+    }
   };
 
   return (
@@ -240,10 +250,20 @@ function PostCard({ item }) {
           <MessageCircle size={18} color={TEXT_MUTED} />
           <Text style={{ fontSize: 13, color: TEXT_SUB, fontWeight: "500" }}>{item.comments}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+        <TouchableOpacity
+          onPress={async () => {
+            if (!auth?.accessToken || !item.postId) return;
+            try {
+              await armutraApi.sharePost(item.postId, auth.accessToken);
+            } catch (error) {
+              logError("feed-share", error);
+            }
+          }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
+        >
           <Share2 size={18} color={TEXT_MUTED} />
           <Text style={{ fontSize: 13, color: TEXT_SUB, fontWeight: "500" }}>Partilhar</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -386,8 +406,8 @@ export default function FeedScreen() {
     isLoading: loading,
     error,
   } = useQuery({
-    queryKey: ["feed"],
-    queryFn: () => armutraApi.getFeed(),
+    queryKey: ["feed", activeFilter],
+    queryFn: () => armutraApi.getFeed(TYPE_MAP[activeFilter] || null),
     staleTime: 0,
     refetchOnMount: "always",
     onError: (queryError) => logError("feed-query", queryError),

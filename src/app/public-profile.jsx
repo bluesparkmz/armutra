@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
-import { armutraApi } from "@/utils/api";
+import { armutraApi, mediaUrl } from "@/utils/api";
 import useAuth from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
 import {
@@ -61,62 +61,41 @@ function Stat({ value, label }) {
 
 function normalizeProfile(kind, data) {
   if (!data) return null;
-  if (kind === "empresa") {
+  const tipo = data.tipo || (kind === "empresa" ? "empresa" : kind === "freelancer" ? "candidato" : null);
+  const avatar = mediaUrl(data.foto_perfil || data.logo_url || data.avatar_url || data.user?.avatar_url);
+  const location = data.localizacao || [data.city, data.province].filter(Boolean).join(", ") || "Moçambique";
+
+  if (tipo === "empresa" || data.empresa || data.company_name) {
+    const empresa = data.empresa || {};
     return {
-      name: data.company_name,
-      subtitle: data.industry || "Empresa",
-      avatar: data.logo_url || data.user?.avatar_url,
-      location: [data.city, data.province].filter(Boolean).join(", ") || "Moçambique",
-      about: data.description || data.mission || "Empresa cadastrada no Armutra.",
+      name: empresa.nome_empresa || data.nome || data.company_name,
+      subtitle: "Empresa",
+      avatar,
+      location,
+      about: empresa.descricao || data.bio || data.description || "Empresa cadastrada no Armutra.",
       icon: Building2,
-      tags: [data.industry, data.employees_range, data.website].filter(Boolean),
+      tags: [empresa.website, location].filter(Boolean),
       stats: [
-        { value: data.open_jobs || 0, label: "Vagas" },
-        { value: data.rating || 0, label: "Rating" },
-        { value: data.total_reviews || 0, label: "Avaliações" },
+        { value: location, label: "Local" },
+        { value: empresa.website ? "Sim" : "Não", label: "Website" },
       ],
     };
   }
-  if (kind === "freelancer") {
-    return {
-      name: data.user?.name,
-      subtitle: data.profession || data.headline || "Freelancer",
-      avatar: data.user?.avatar_url,
-      location: [data.user?.city, data.user?.province].filter(Boolean).join(", ") || "Moçambique",
-      about: data.bio || "Freelancer cadastrado no Armutra.",
-      icon: UserRound,
-      tags: [
-        data.category,
-        data.skills,
-        data.price_label ||
-          (data.hourly_rate != null
-            ? `${Number(data.hourly_rate).toLocaleString("pt-MZ")} MZN/h`
-            : null),
-      ].filter(Boolean),
-      stats: [
-        { value: data.completed_jobs || 0, label: "Trabalhos" },
-        { value: data.rating || 0, label: "Rating" },
-        { value: data.total_reviews || 0, label: "Avaliações" },
-      ],
-    };
-  }
+
+  const candidato = data.candidato || {};
+  const skills = Array.isArray(candidato.habilidades) ? candidato.habilidades : [];
   return {
-    name: data.name,
-    subtitle:
-      data.user_type === "empresa"
-        ? "Empresa"
-        : data.user_type === "freelancer"
-          ? "Freelancer"
-          : "Utilizador",
-    avatar: data.avatar_url,
-    location: [data.city, data.province].filter(Boolean).join(", ") || "Moçambique",
-    about: "Perfil público no Armutra.",
+    name: data.nome || data.name || data.user?.name,
+    subtitle: skills[0] || (tipo === "candidato" ? "Candidato" : "Utilizador"),
+    avatar,
+    location,
+    about: data.bio || candidato.experiencia || candidato.educacao || "Perfil no Armutra.",
     icon: UserRound,
-    tags: [data.user_type, data.phone].filter(Boolean),
+    tags: skills.length ? skills : [data.email].filter(Boolean),
     stats: [
-      { value: data.is_verified ? "Sim" : "Não", label: "Verificado" },
-      { value: data.province || "-", label: "Província" },
-      { value: data.city || "-", label: "Cidade" },
+      { value: skills.length, label: "Habilidades" },
+      { value: candidato.cv_url ? "Sim" : "Não", label: "CV" },
+      { value: location, label: "Local" },
     ],
   };
 }
@@ -131,11 +110,7 @@ export default function PublicProfileScreen() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-profile", kind, id],
     enabled: !!id,
-    queryFn: () => {
-      if (kind === "empresa") return armutraApi.getCompany(id);
-      if (kind === "freelancer") return armutraApi.getFreelancer(id);
-      return armutraApi.getUser(id);
-    },
+    queryFn: () => armutraApi.getUser(id),
     onError: (queryError) => logError("public-profile", queryError, { kind, id }),
   });
 
@@ -143,8 +118,7 @@ export default function PublicProfileScreen() {
   const { auth } = useAuth();
   const token = auth?.accessToken;
   const queryClient = useQueryClient();
-  const targetUserId =
-    kind === "user" ? id : data?.user_id || data?.user?.id || null;
+  const targetUserId = data?.id || id;
   const isMe = !!targetUserId && auth?.user?.id === targetUserId;
 
   const { data: connectionStatus } = useQuery({
@@ -163,7 +137,12 @@ export default function PublicProfileScreen() {
     },
     onError: (mutationError) => {
       logError("follow-user", mutationError, { targetUserId });
-      Alert.alert("Erro", mutationError?.message || "Não foi possível actualizar a conexão.");
+      const raw = mutationError?.message || "";
+      const missing = /not found|não encontrado|nao encontrado/i.test(raw);
+      Alert.alert(
+        "Conectar",
+        missing ? "Seguir ainda não está disponível nesta API." : raw || "Não foi possível actualizar a conexão."
+      );
     },
   });
 
@@ -174,6 +153,12 @@ export default function PublicProfileScreen() {
   });
 
   const isFollowing = !!connectionStatus?.a_seguir_utilizador;
+  const isCompany = data?.tipo === "empresa" || kind === "empresa";
+  const related = useQuery({
+    queryKey: ["profile-related", id, isCompany],
+    enabled: !!id && !!data,
+    queryFn: () => (isCompany ? armutraApi.getJobsByCompany(id) : armutraApi.getServicesByUser(id)),
+  });
 
   const handleConnect = () => {
     if (!token) {
@@ -315,6 +300,10 @@ export default function PublicProfileScreen() {
             )}
 
             <TouchableOpacity
+              onPress={() => {
+                if (!targetUserId || isMe) return;
+                router.push({ pathname: "/messages", params: { userId: targetUserId, nome: profile?.name || "" } });
+              }}
               activeOpacity={0.85}
               style={{
                 flex: 1,
@@ -390,6 +379,58 @@ export default function PublicProfileScreen() {
                 Perfil público
               </Text>
             </View>
+          )}
+        </View>
+
+        <View
+          style={{
+            backgroundColor: CARD,
+            marginTop: 8,
+            padding: 20,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: BORDER,
+            gap: 10,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "700", color: TEXT_MAIN }}>
+            {isCompany ? "Vagas abertas" : "Serviços"}
+          </Text>
+          {(related.data || []).length === 0 ? (
+            <Text style={{ color: TEXT_SUB, fontSize: 14 }}>
+              {isCompany ? "Esta empresa não tem vagas abertas." : "Este perfil ainda não publicou serviços."}
+            </Text>
+          ) : (
+            related.data.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() =>
+                  router.push({
+                    pathname: "/content-detail",
+                    params: {
+                      type: isCompany ? "vaga" : "servico",
+                      id: item.id,
+                      item: JSON.stringify(item),
+                    },
+                  })
+                }
+                style={{
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <Text style={{ fontWeight: "800", color: TEXT_MAIN }}>{item.titulo || item.title}</Text>
+                <Text style={{ color: TEXT_SUB, marginTop: 4 }} numberOfLines={2}>
+                  {isCompany
+                    ? [item.salario || item.salary, item.localizacao || item.location].filter(Boolean).join(" · ")
+                    : [item.preco == null || item.preco === "" ? "A negociar" : `${item.preco} MZN`, item.categoria]
+                        .filter(Boolean)
+                        .join(" · ")}
+                </Text>
+              </TouchableOpacity>
+            ))
           )}
         </View>
       </ScrollView>

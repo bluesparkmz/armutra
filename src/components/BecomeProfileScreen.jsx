@@ -7,12 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LocationFields from "@/components/LocationFields";
 import { freelancerCategories } from "@/data/categories";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { authApi, armutraApi } from "@/utils/api";
+import { authApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
+import { ACCENT, BG_SOFT } from "@/theme";
 
-const BLUE = "#2563EB";
-const BG = "#F8FAFC";
+const BG = BG_SOFT;
 
 const inputStyle = {
   backgroundColor: "#fff",
@@ -84,31 +84,33 @@ export default function BecomeProfileScreen({ type }) {
     setSubmitting(true);
     setError(null);
     try {
+      const localizacao = [form.city, form.province].filter(Boolean).join(", ");
       if (type === "company") {
-        await armutraApi.createCompanyProfile(
+        await authApi.updateMe(
           {
-            user_id: user.id,
-            company_name: form.company_name.trim(),
-            industry: form.industry.trim() || null,
-            description: form.description.trim() || null,
-            contact_email: user.email,
-            province: form.province.trim() || null,
-            city: form.city.trim() || null,
+            nome: form.company_name.trim() || undefined,
+            localizacao,
+            empresa: {
+              nome_empresa: form.company_name.trim(),
+              descricao: form.description.trim() || null,
+            },
           },
           token
         );
       } else {
-        await armutraApi.createFreelancerProfile(
+        const habilidades = form.skills
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        if (form.profession.trim()) habilidades.unshift(form.profession.trim());
+        await authApi.updateMe(
           {
-            user_id: user.id,
-            headline: form.profession.trim() || null,
-            profession: form.profession.trim() || null,
-            category: form.category.trim() || null,
             bio: form.bio.trim() || null,
-            skills: form.skills.trim() || null,
-            hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : null,
-            available: true,
-            availability_status: "Disponivel",
+            localizacao,
+            candidato: {
+              habilidades,
+              experiencia: form.bio.trim() || null,
+            },
           },
           token
         );
@@ -164,7 +166,7 @@ export default function BecomeProfileScreen({ type }) {
             width: 42,
             height: 42,
             borderRadius: 12,
-            backgroundColor: BLUE,
+            backgroundColor: ACCENT,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -183,12 +185,16 @@ export default function BecomeProfileScreen({ type }) {
               value={form.company_name}
               onChangeText={(value) => update("company_name", value)}
               placeholder="Nome da empresa"
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={inputStyle}
             />
             <TextInput
               value={form.industry}
               onChangeText={(value) => update("industry", value)}
               placeholder="Area da empresa"
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={inputStyle}
             />
             <TextInput
@@ -196,6 +202,8 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("description", value)}
               placeholder="Descricao da empresa"
               multiline
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={multilineStyle}
             />
           </>
@@ -205,12 +213,15 @@ export default function BecomeProfileScreen({ type }) {
               value={form.profession}
               onChangeText={(value) => update("profession", value)}
               placeholder="Profissao"
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={inputStyle}
             />
             <View style={[inputStyle, { paddingHorizontal: 0, paddingVertical: 0 }]}>
               <Picker
                 selectedValue={form.category}
                 onValueChange={(value) => update("category", value)}
+                dropdownIconColor={ACCENT}
                 style={{ color: form.category ? "#0F172A" : "#94A3B8", minHeight: 52 }}
               >
                 <Picker.Item label="Categoria" value="" />
@@ -223,6 +234,8 @@ export default function BecomeProfileScreen({ type }) {
               value={form.skills}
               onChangeText={(value) => update("skills", value)}
               placeholder="Habilidades, separadas por virgula"
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={inputStyle}
             />
             <TextInput
@@ -230,6 +243,8 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("hourly_rate", value)}
               placeholder="Preco por hora"
               keyboardType="numeric"
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={inputStyle}
             />
             <TextInput
@@ -237,6 +252,8 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("bio", value)}
               placeholder="Fale sobre o seu trabalho"
               multiline
+              selectionColor={ACCENT}
+              cursorColor={ACCENT}
               style={multilineStyle}
             />
           </>
@@ -256,7 +273,7 @@ export default function BecomeProfileScreen({ type }) {
           onPress={submit}
           disabled={submitting}
           style={{
-            backgroundColor: BLUE,
+            backgroundColor: ACCENT,
             minHeight: 54,
             borderRadius: 14,
             alignItems: "center",

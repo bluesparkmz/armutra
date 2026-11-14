@@ -22,18 +22,17 @@ import {
 import LocationFields from "@/components/LocationFields";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
-import { armutraApi } from "@/utils/api";
+import { armutraApi, authApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
+import { ACCENT, BG_SOFT, BORDER, TEXT_MAIN } from "@/theme";
 
-const BLUE = "#2563EB";
-const GREEN = "#10B981";
-const BG = "#F8FAFC";
+const BG = BG_SOFT;
 
 const inputStyle = {
   backgroundColor: "#fff",
   borderWidth: 1,
-  borderColor: "#E2E8F0",
+  borderColor: BORDER,
   borderRadius: 14,
   paddingHorizontal: 14,
   paddingVertical: 13,
@@ -61,7 +60,7 @@ function SectionTitle({ title }) {
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { auth } = useAuth();
+  const { auth, setAuth } = useAuth();
   const user = auth?.user;
   const token = auth?.accessToken;
 
@@ -130,22 +129,27 @@ export default function EditProfileScreen() {
         avatarUrl = await uploadAvatar();
       }
 
-      const updateData = {
+      const payload = {
         name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        profession: form.profession.trim() || null,
         bio: form.bio.trim() || null,
         province: form.province.trim(),
         city: form.city.trim(),
-        website: form.website.trim() || null,
       };
-
-      if (avatarUrl) {
-        updateData.avatar = avatarUrl;
+      if (avatarUrl) payload.foto_perfil = avatarUrl;
+      if (user.tipo === "empresa") {
+        payload.empresa = {
+          nome_empresa: form.name.trim(),
+          website: form.website.trim() || null,
+        };
+      } else if (form.profession.trim()) {
+        payload.candidato = {
+          habilidades: [form.profession.trim()],
+          experiencia: form.bio.trim() || null,
+        };
       }
 
-      await armutraApi.updateProfile(user.id, updateData, token);
+      const updated = await authApi.updateMe(payload, token);
+      setAuth({ ...auth, user: updated });
       
       Alert.alert("Sucesso", "Perfil atualizado com sucesso!", [
         { text: "OK", onPress: () => router.back() },
@@ -196,7 +200,7 @@ export default function EditProfileScreen() {
             width: 42,
             height: 42,
             borderRadius: 12,
-            backgroundColor: saving ? "#E2E8F0" : BLUE,
+            backgroundColor: saving ? "#E2E8F0" : ACCENT,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -255,7 +259,7 @@ export default function EditProfileScreen() {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: BLUE,
+                backgroundColor: ACCENT,
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 3,
@@ -269,7 +273,7 @@ export default function EditProfileScreen() {
             onPress={pickAvatar}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 13, fontWeight: "700", color: BLUE }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: ACCENT }}>
               Alterar foto
             </Text>
           </TouchableOpacity>
@@ -281,6 +285,8 @@ export default function EditProfileScreen() {
           value={form.name}
           onChangeText={(value) => update("name", value)}
           placeholder="Nome completo"
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={inputStyle}
         />
         <TextInput
@@ -289,6 +295,8 @@ export default function EditProfileScreen() {
           placeholder="Email"
           keyboardType="email-address"
           autoCapitalize="none"
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={inputStyle}
         />
         <TextInput
@@ -296,6 +304,8 @@ export default function EditProfileScreen() {
           onChangeText={(value) => update("phone", value)}
           placeholder="Telefone"
           keyboardType="phone-pad"
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={inputStyle}
         />
 
@@ -305,6 +315,8 @@ export default function EditProfileScreen() {
           value={form.profession}
           onChangeText={(value) => update("profession", value)}
           placeholder="Profissão ou especialidade"
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={inputStyle}
         />
         <TextInput
@@ -313,6 +325,8 @@ export default function EditProfileScreen() {
           placeholder="Sobre você (bio)"
           multiline
           numberOfLines={4}
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={[inputStyle, { minHeight: 100, textAlignVertical: "top" }]}
         />
         <TextInput
@@ -320,6 +334,8 @@ export default function EditProfileScreen() {
           onChangeText={(value) => update("website", value)}
           placeholder="Website ou portfólio"
           keyboardType="url"
+          selectionColor={ACCENT}
+          cursorColor={ACCENT}
           style={inputStyle}
         />
 
@@ -356,7 +372,7 @@ export default function EditProfileScreen() {
           onPress={handleSave}
           disabled={saving}
           style={{
-            backgroundColor: BLUE,
+            backgroundColor: ACCENT,
             minHeight: 54,
             borderRadius: 14,
             alignItems: "center",

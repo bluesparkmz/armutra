@@ -85,7 +85,7 @@ export function HomeTopBar({ userName, userAvatar, onAvatarPress, isLoggedIn = !
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <TouchableOpacity
-          onPress={() => router.push("/notifications")}
+          onPress={() => router.push("/messages")}
           activeOpacity={0.8}
           style={{
             width: 36,

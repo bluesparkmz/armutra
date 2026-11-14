@@ -208,12 +208,14 @@ export default function CreateContentScreen({ type }) {
           return;
         }
         const imageUrl = hasImage ? await uploadSelectedImage() : null;
+        const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
         await armutraApi.createPost(
           {
-            author_id: user.id,
-            post_type: hasImage ? "image" : "text",
-            content: content || null,
-            ...(hasImage ? { image_url: imageUrl } : {}),
+            tipo_post: "geral",
+            titulo: (content || "Publicação").slice(0, 80),
+            descricao: content || "Publicação com imagem",
+            localizacao,
+            imagens: imageUrl ? [imageUrl] : null,
           },
           token
         );
@@ -225,17 +227,26 @@ export default function CreateContentScreen({ type }) {
         if (selectedImage?.uri) {
           imageUrl = await uploadSelectedImage();
         }
-        await armutraApi.createService(
+        const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
+        const preco = form.price ? Number(form.price) : 0;
+        const service = await armutraApi.createService(
           {
-            owner_user_id: user.id,
-            owner_type: user.user_type === "empresa" ? "empresa" : "freelancer",
-            title: form.title.trim(),
-            description: form.description.trim(),
-            category: form.category.trim() || null,
-            price: form.price ? Number(form.price) : null,
-            province: form.province.trim() || null,
-            city: form.city.trim() || null,
-            image_url: imageUrl,
+            titulo: form.title.trim(),
+            descricao: form.description.trim(),
+            categoria: form.category.trim() || "Geral",
+            preco,
+          },
+          token
+        );
+        await armutraApi.createPost(
+          {
+            tipo_post: "servico",
+            titulo: form.title.trim(),
+            descricao: form.description.trim(),
+            salario: preco ? `${preco} MZN` : null,
+            localizacao,
+            imagens: imageUrl ? [imageUrl] : null,
+            service_id: service.id,
           },
           token
         );
@@ -247,18 +258,27 @@ export default function CreateContentScreen({ type }) {
         if (selectedImage?.uri) {
           imageUrl = await uploadSelectedImage();
         }
-        await armutraApi.createJob(
+        const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
+        const salario = [form.salary_min, form.salary_max].filter(Boolean).join(" - ");
+        const job = await armutraApi.createJob(
           {
-            company_user_id: user.id,
-            title: form.title.trim(),
-            description: form.description.trim(),
-            requirements: form.requirements.trim() || null,
-            salary_min: form.salary_min ? Number(form.salary_min) : null,
-            salary_max: form.salary_max ? Number(form.salary_max) : null,
-            province: form.province.trim() || null,
-            city: form.city.trim() || null,
-            job_type: "full_time",
-            image_url: imageUrl,
+            titulo: form.title.trim(),
+            descricao: form.description.trim(),
+            requisitos: form.requirements.trim() || "A combinar",
+            salario: salario ? `${salario} MZN` : "A negociar",
+            localizacao,
+          },
+          token
+        );
+        await armutraApi.createPost(
+          {
+            tipo_post: "vaga",
+            titulo: form.title.trim(),
+            descricao: form.description.trim(),
+            salario: salario ? `${salario} MZN` : "A negociar",
+            localizacao,
+            imagens: imageUrl ? [imageUrl] : null,
+            job_id: job.id,
           },
           token
         );

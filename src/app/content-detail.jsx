@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -73,98 +73,72 @@ function salaryLabel(item) {
 }
 
 function ownerProfile(type, item) {
-  if (item.profile_id || item.user_id) {
-    return {
-      kind: item.profile_type || (type === "vaga" ? "empresa" : "user"),
-      id: item.profile_id || item.user_id,
-    };
-  }
-
-  if (type === "vaga") {
-    const company = item.company_user?.company_profile;
-    return { kind: company ? "empresa" : "user", id: company?.id || item.company_user_id };
-  }
-
-  if (type === "servico") {
-    const owner = item.owner_user || {};
-    const profile = owner.freelancer_profile || owner.company_profile;
-    return {
-      kind: owner.freelancer_profile ? "freelancer" : owner.company_profile ? "empresa" : "user",
-      id: profile?.id || item.owner_user_id,
-    };
-  }
-
-  const author = item.author || {};
-  const profile = author.freelancer_profile || author.company_profile;
-  return {
-    kind: author.freelancer_profile ? "freelancer" : author.company_profile ? "empresa" : "user",
-    id: profile?.id || item.author_id,
-  };
+  const id =
+    item.profile_id ||
+    item.user_id ||
+    item.empresa_user_id ||
+    item.companyUserId ||
+    item.autor?.id ||
+    null;
+  return { kind: "user", id };
 }
 
 function normalize(type, item) {
   if (!item) return null;
 
   if (type === "vaga") {
-    const company = item.company_user?.company_profile;
-    const tags = item.tags || (item.requirements || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+    const tags =
+      item.tags ||
+      String(item.requisitos || item.requirements || "")
+        .split(/[,;\n]/)
+        .map((tag) => tag.trim())
+        .filter((tag) => tag && tag.length < 40);
+    const salary = item.salary || displayMoney(item.salario) || salaryLabel(item);
     return {
       accent: ACCENT,
       icon: Briefcase,
       label: "Vaga",
-      title: item.title,
-      body: item.description,
-      owner: item.company || company?.company_name || item.company_user?.name,
-      avatar: item.avatar || item.logo || company?.logo_url || item.company_user?.avatar_url,
-      role: company?.industry || item.category || "Empresa",
+      title: item.title || item.titulo,
+      body: item.description || item.descricao || item.content,
+      owner: item.company || item.empresa_nome || item.author,
+      avatar: item.avatar || item.logo,
+      role: item.role || "Empresa",
       image: item.image || item.image_url || null,
-      location: item.location || [item.city, item.province].filter(Boolean).join(", ") || "Moçambique",
-      postedAt: item.postedAt || formatDate(item.created_at),
-      meta: [
-        jobTypeLabels[item.job_type] || item.jobType || item.type,
-        salaryLabel(item),
-      ].filter(Boolean),
+      location: item.location || item.localizacao || "Moçambique",
+      postedAt: item.postedAt || formatDate(item.criado_em || item.created_at),
+      meta: [salary].filter(Boolean),
       tags,
       likes: item.likes ?? item.likes_count ?? 0,
       comments: item.comments ?? item.comments_count ?? 0,
       cta: "Candidatar-se",
       ctaLabel: "Salário",
-      ctaValue: salaryLabel(item) || "A negociar",
+      ctaValue: salary || "A negociar",
     };
   }
 
   if (type === "servico") {
     const owner = item.owner_user || {};
     const freelancer = owner.freelancer_profile;
+    const price = item.price || displayMoney(item.preco) || item.salario;
     return {
       accent: ACCENT,
       icon: Sparkles,
       label: "Servico",
-      title: item.title,
-      body: item.description,
-      owner: item.company || owner.name,
+      title: item.title || item.titulo,
+      body: item.description || item.descricao || item.content,
+      owner: item.company || item.owner_nome || owner.name || item.author,
       avatar: item.avatar || owner.avatar_url,
-      role: item.category || freelancer?.profession || "Servico profissional",
+      role: item.category || item.categoria || freelancer?.profession || "Servico profissional",
       image: item.image || item.image_url,
-      location: item.location || [item.city, item.province].filter(Boolean).join(", ") || "Mocambique",
-      postedAt: item.postedAt || formatDate(item.created_at),
-      meta: [
-        priceFromItem(item) ||
-          displayMoney(item.price) ||
-          displayMoney(freelancer?.price_label) ||
-          "A negociar",
-        item.rating ? `${item.rating} rating` : null,
-      ].filter(Boolean),
-      tags: [item.category, item.owner_type].filter(Boolean),
+      location: item.location || item.localizacao || "Mocambique",
+      postedAt: item.postedAt || formatDate(item.criado_em || item.created_at),
+      meta: [price || "A negociar"].filter(Boolean),
+      tags: [item.category || item.categoria].filter(Boolean),
       likes: item.likes ?? item.likes_count ?? 0,
       comments: item.comments ?? item.comments_count ?? 0,
       cta: "Solicitar serviço",
       ctaLabel: "Preço",
-      ctaValue:
-        priceFromItem(item) ||
-        displayMoney(item.price) ||
-        displayMoney(freelancer?.price_label) ||
-        "A negociar",
+      ctaValue: price || "A negociar",
     };
   }
 
@@ -172,9 +146,9 @@ function normalize(type, item) {
     accent: ACCENT,
     icon: Send,
     label: "Post",
-    title: null,
-    body: item.content,
-    owner: item.author?.name || item.author,
+    title: item.title || item.titulo,
+    body: item.content || item.descricao,
+    owner: item.author?.name || item.author || item.autor?.nome,
     avatar: item.avatar || item.author?.avatar_url,
     role: item.role || item.author?.user_type || "Usuario",
     image: item.image || item.image_url,
@@ -233,6 +207,8 @@ export default function ContentDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [comment, setComment] = useState("");
+  const [note, setNote] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["content-detail", type, id],
@@ -253,18 +229,66 @@ export default function ContentDetailScreen() {
   const Icon = detail?.icon || Send;
   const showLoader = isLoading && !detail;
 
+  const isPost = data?.source === "post" || !!data?.tipo_post || !!data?.postId;
+  const postId = isPost ? data?.postId || data?.id : null;
+
+  const commentsQuery = useQuery({
+    queryKey: ["comments", postId],
+    enabled: !!postId,
+    queryFn: () => armutraApi.getComments(postId),
+  });
+
   const actionMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("Entre na sua conta para continuar.");
-      if (type === "servico") return armutraApi.requestService(id, { requester_user_id: user.id }, token);
-      if (type === "vaga") return armutraApi.applyToJob(id, { applicant_user_id: user.id }, token);
+      if (type === "servico") {
+        const ownerId = data?.user_id || data?.raw?.user_id;
+        if (!ownerId) throw new Error("Não foi possível identificar quem oferece este serviço.");
+        return armutraApi.sendMessage(
+          {
+            destinatario_user_id: ownerId,
+            conteudo: note.trim() || "Olá, tenho interesse neste serviço.",
+          },
+          token
+        );
+      }
+      if (type === "vaga") {
+        const jobId = data?.jobId || data?.job_id || (data?.empresa_user_id ? data.id : id);
+        return armutraApi.applyToJob(
+          jobId,
+          { mensagem: note.trim() || "Tenho interesse nesta vaga." },
+          token
+        );
+      }
       return null;
     },
-    onSuccess: () => setMessage(type === "vaga" ? "Candidatura enviada." : "Pedido enviado."),
+    onSuccess: () => setMessage(type === "vaga" ? "Candidatura enviada." : "Mensagem enviada."),
     onError: (mutationError) => {
       setMessage(mutationError.message);
       logError("content-detail-action", mutationError, { type, id });
     },
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: () => armutraApi.likePost(postId, token),
+    onSuccess: () => setLiked(true),
+    onError: (mutationError) => setMessage(mutationError.message),
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: () => armutraApi.sharePost(postId, token),
+    onSuccess: () => setMessage("Publicação partilhada."),
+    onError: (mutationError) => setMessage(mutationError.message),
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: () => armutraApi.commentPost(postId, comment.trim(), token),
+    onSuccess: () => {
+      setComment("");
+      setMessage("Comentário publicado.");
+      commentsQuery.refetch();
+    },
+    onError: (mutationError) => setMessage(mutationError.message),
   });
 
   const openOwner = () => {
@@ -408,12 +432,77 @@ export default function ContentDetailScreen() {
                 icon={Heart}
                 label="Gostar"
                 active={liked}
-                onPress={() => setLiked((value) => !value)}
+                onPress={() => {
+                  if (!token) {
+                    setMessage("Entre na sua conta para gostar.");
+                    return;
+                  }
+                  if (!postId) return;
+                  likeMutation.mutate();
+                }}
               />
               <Action icon={MessageCircle} label="Comentar" />
-              <Action icon={Share2} label="Partilhar" />
+              <Action
+                icon={Share2}
+                label="Partilhar"
+                onPress={() => {
+                  if (!token || !postId) return;
+                  shareMutation.mutate();
+                }}
+              />
               <Action icon={Bookmark} label="Guardar" />
             </View>
+
+            {!!postId && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
+                {(commentsQuery.data || []).map((item) => (
+                  <View key={item.id}>
+                    <Text style={{ color: TEXT_MAIN, fontSize: 13, fontWeight: "700" }}>
+                      {item.autor_nome || "Utilizador"}
+                    </Text>
+                    <Text style={{ color: TEXT_SUB, fontSize: 14, marginTop: 2 }}>{item.conteudo}</Text>
+                  </View>
+                ))}
+                <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                  <TextInput
+                    value={comment}
+                    onChangeText={setComment}
+                    placeholder="Escreva um comentário"
+                    placeholderTextColor={TEXT_SUB}
+                    style={{
+                      flex: 1,
+                      minHeight: 44,
+                      borderWidth: 1,
+                      borderColor: BORDER,
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      color: TEXT_MAIN,
+                      backgroundColor: BG,
+                    }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!token) {
+                        setMessage("Entre na sua conta para comentar.");
+                        return;
+                      }
+                      if (!comment.trim()) return;
+                      commentMutation.mutate();
+                    }}
+                    style={{
+                      backgroundColor: ACCENT,
+                      borderRadius: 12,
+                      minHeight: 44,
+                      paddingHorizontal: 14,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "700" }}>Enviar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {/* Detalhes (vagas e serviços) */}
             {(detail.tags.length > 0 || detail.meta.length > 0) && (
@@ -455,6 +544,22 @@ export default function ContentDetailScreen() {
                 paddingBottom: Math.max(insets.bottom, 12),
               }}
             >
+              <TextInput
+                value={note}
+                onChangeText={setNote}
+                placeholder={type === "vaga" ? "Mensagem para a empresa" : "Mensagem para o prestador"}
+                placeholderTextColor={TEXT_SUB}
+                style={{
+                  minHeight: 44,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  marginBottom: 10,
+                  color: TEXT_MAIN,
+                  backgroundColor: BG,
+                }}
+              />
               {!!message && (
                 <View
                   style={{

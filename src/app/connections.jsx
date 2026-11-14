@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, UserCheck, UserPlus, Users } from "lucide-react-native";
+import { ArrowLeft, MessageCircle, UserCheck, UserPlus, Users } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { API_URL, armutraApi } from "@/utils/api";
@@ -44,7 +44,7 @@ function resolveAvatar(uri) {
   return uri.startsWith("/") ? `${API_URL}${uri}` : uri;
 }
 
-function ConnectionRow({ item, isFollowing, busy, onOpen, onToggle }) {
+function ConnectionRow({ item, isFollowing, busy, onOpen, onToggle, onMessage }) {
   return (
     <TouchableOpacity
       onPress={onOpen}
@@ -69,6 +69,21 @@ function ConnectionRow({ item, isFollowing, busy, onOpen, onToggle }) {
           {[TYPE_LABELS[item.tipo] || item.tipo, item.localizacao].filter(Boolean).join(" · ")}
         </Text>
       </View>
+      <TouchableOpacity
+        onPress={onMessage}
+        activeOpacity={0.85}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: BORDER,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <MessageCircle size={16} color={TEXT_MAIN} />
+      </TouchableOpacity>
       <TouchableOpacity
         onPress={onToggle}
         disabled={busy}
@@ -263,6 +278,12 @@ export default function ConnectionsScreen() {
                   busy={toggle.isPending && toggle.variables?.userId === item.id}
                   onOpen={() =>
                     router.push({ pathname: "/public-profile", params: { kind: "user", id: item.id } })
+                  }
+                  onMessage={() =>
+                    router.push({
+                      pathname: "/messages",
+                      params: { userId: item.id, nome: item.nome },
+                    })
                   }
                   onToggle={() =>
                     toggle.mutate({ userId: item.id, follow: !followingIds.has(item.id) })

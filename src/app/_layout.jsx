@@ -52,6 +52,9 @@ export default function RootLayout() {
           <Stack.Screen name="ads" options={{ headerShown: false }} />
           <Stack.Screen name="boost" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="messages" options={{ headerShown: false }} />
+          <Stack.Screen name="minhas-vagas" options={{ headerShown: false }} />
+          <Stack.Screen name="meus-servicos" options={{ headerShown: false }} />
           <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />

@@ -21,6 +21,14 @@ import {
   TEXT_MUTED,
 } from "@/theme";
 
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 const freelancerCategories = [
   "Todos",
   "Design",
@@ -153,13 +161,12 @@ export default function FreelancersScreen() {
   });
 
   const filtered = freelancers.filter((f) => {
-    const catMatch = selectedCategory === "Todos" || f.category === selectedCategory;
-    const q = search.trim().toLowerCase();
-    const searchMatch =
-      !q ||
-      f.name?.toLowerCase().includes(q) ||
-      f.category?.toLowerCase().includes(q) ||
-      f.profession?.toLowerCase().includes(q);
+    const haystack = normalizeText(
+      `${f.name} ${f.profession} ${f.category} ${(f.tags || []).join(" ")} ${f.location}`
+    );
+    const catMatch = selectedCategory === "Todos" || haystack.includes(normalizeText(selectedCategory));
+    const q = normalizeText(search);
+    const searchMatch = !q || haystack.includes(q);
     return catMatch && searchMatch;
   });
 

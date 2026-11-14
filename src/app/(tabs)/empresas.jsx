@@ -42,10 +42,6 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
-function sameText(a, b) {
-  return normalizeText(a) === normalizeText(b);
-}
-
 function EmpresaRow({ empresa }) {
   const router = useRouter();
   const openProfile = () => {
@@ -168,9 +164,10 @@ export default function EmpresasScreen() {
   });
 
   const filtered = empresas.filter((e) => {
-    const catMatch = selectedCategory === "Todos" || e.area === selectedCategory;
-    const provinceMatch = !province || sameText(e.raw?.province, province);
-    const cityMatch = !city || sameText(e.raw?.city, city);
+    const haystack = normalizeText(`${e.name} ${e.description} ${e.area} ${e.location}`);
+    const catMatch = selectedCategory === "Todos" || haystack.includes(normalizeText(selectedCategory));
+    const provinceMatch = !province || haystack.includes(normalizeText(province));
+    const cityMatch = !city || haystack.includes(normalizeText(city));
     if (!provinceMatch || !cityMatch) return false;
     const q = search.trim().toLowerCase();
     const searchMatch =

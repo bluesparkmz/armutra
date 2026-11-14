@@ -27,7 +27,10 @@ import {
   ChevronDown,
   Sparkles,
   Briefcase,
+  MessageCircle,
   Send,
+  Users,
+  Wallet,
 } from "lucide-react-native";
 import LocationFields from "@/components/LocationFields";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
@@ -66,27 +69,6 @@ const inputStyle = {
   minHeight: 54,
 };
 
-function StatBox({ value, label }) {
-  return (
-    <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={{ fontSize: 11, color: TEXT_SUB, marginTop: 4, textAlign: "center" }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function SectionTitle({ title }) {
-  return (
-    <Text style={{ fontSize: 17, fontWeight: "800", color: TEXT_MAIN, marginBottom: 12 }}>
-      {title}
-    </Text>
-  );
-}
-
 function IconButton({ onPress, children, active }) {
   return (
     <TouchableOpacity
@@ -111,7 +93,7 @@ function IconButton({ onPress, children, active }) {
 /** Opções do menu "Postar" conforme o tipo de conta */
 function getCreateOptions(userType) {
   const options = [];
-  if (userType === "freelancer" || userType === "empresa") {
+  if (userType === "candidato" || userType === "freelancer" || userType === "empresa") {
     options.push({
       key: "service",
       label: "Serviço",
@@ -183,7 +165,7 @@ function PostMenu({ insets, userType, onSelect }) {
           <View
             style={{
               position: "absolute",
-              top: insets.top + 60,
+              top: insets.top + 56,
               right: 20,
               width: 250,
               backgroundColor: BG,
@@ -248,94 +230,30 @@ function PostMenu({ insets, userType, onSelect }) {
   );
 }
 
-function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
-  const tag = tagStyle();
-  const accountLabel =
-    user?.user_type === "empresa"
-      ? "Empresa"
-      : user?.user_type === "freelancer"
-        ? "Freelancer"
-        : "Profissional";
-  const location = [user?.city, user?.province].filter(Boolean).join(", ") || "Moçambique";
+function accountLabelOf(user) {
+  if (user?.tipo === "empresa" || user?.user_type === "empresa") return "Empresa";
+  if (user?.user_type === "freelancer") return "Freelancer";
+  return "Candidato";
+}
 
+function ProfileFixedHeader({ insets, user, onPost, onSettings }) {
   return (
-    <ScreenFixedHeader insets={insets} paddingBottom={0}>
+    <ScreenFixedHeader insets={insets} paddingBottom={8}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: 12,
+          paddingHorizontal: 16,
+          minHeight: 44,
         }}
       >
         <Text style={{ fontSize: 22, fontWeight: "800", color: TEXT_MAIN }}>Perfil</Text>
         <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          <PostMenu insets={insets} userType={user?.user_type} onSelect={onPost} />
+          <PostMenu insets={insets} userType={user?.user_type || user?.tipo} onSelect={onPost} />
           <IconButton onPress={onSettings}>
             <Settings size={18} color={TEXT_MAIN} />
           </IconButton>
-        </View>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 20,
-          paddingBottom: 16,
-          gap: 16,
-        }}
-      >
-        <View
-          style={{
-            borderWidth: 2,
-            borderColor: ACCENT_LIGHT,
-            borderRadius: 999,
-            padding: 2,
-          }}
-        >
-          <ArmutraAvatar uri={user?.avatar_url} name={user?.name || "Perfil Armutra"} size={72} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }} numberOfLines={2}>
-            {user?.name || "Perfil Armutra"}
-          </Text>
-          <View
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: tag.bg,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: radius.pill,
-              marginTop: 6,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: tag.text }}>{accountLabel}</Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
-            <MapPin size={13} color={TEXT_MUTED} />
-            <Text style={{ fontSize: 13, color: TEXT_SUB, flex: 1 }} numberOfLines={1}>
-              {location}
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
-            <CheckCircle
-              size={14}
-              color={user?.is_verified ? ACCENT : TEXT_MUTED}
-              fill={user?.is_verified ? ACCENT_LIGHT : "transparent"}
-            />
-            <Text
-              style={{
-                fontSize: 12,
-                color: user?.is_verified ? ACCENT_DARK : TEXT_SUB,
-                fontWeight: "600",
-              }}
-            >
-              {user?.is_verified ? "Perfil verificado" : "Perfil em configuração"}
-            </Text>
-          </View>
         </View>
       </View>
     </ScreenFixedHeader>
@@ -444,10 +362,38 @@ function AuthPanel({ insets, mode, setMode, form, setForm, onSubmit, error, load
 
           {!isLogin && (
             <>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {[
+                  { id: "candidato", label: "Candidato" },
+                  { id: "empresa", label: "Empresa" },
+                ].map((option) => {
+                  const selected = (form.tipo || "candidato") === option.id;
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      onPress={() => setForm((current) => ({ ...current, tipo: option.id }))}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: radius.md,
+                        borderWidth: 1,
+                        borderColor: selected ? ACCENT : BORDER,
+                        backgroundColor: selected ? ACCENT : BG,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700", color: selected ? "#fff" : TEXT_MAIN }}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
               <TextInput
                 value={form.name}
                 onChangeText={(name) => setForm((current) => ({ ...current, name }))}
-                placeholder="Nome"
+                placeholder={form.tipo === "empresa" ? "Nome da empresa" : "Nome"}
                 {...authInputProps}
               />
               <TextInput
@@ -645,7 +591,8 @@ export default function PerfilScreen() {
     phone: "",
     province: DEFAULT_PROVINCE,
     city: getDefaultDistrict(DEFAULT_PROVINCE),
-    user_type: "normal",
+    user_type: "candidato",
+    tipo: "candidato",
   });
   const [authError, setAuthError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -766,6 +713,56 @@ export default function PerfilScreen() {
   }
 
   const tag = tagStyle();
+  const isCompany = user?.tipo === "empresa" || user?.user_type === "empresa";
+  const location = [user?.city, user?.province].filter(Boolean).join(", ") || user?.localizacao || "Moçambique";
+  const shortcuts = [
+    {
+      key: "profile",
+      label: isCompany ? "Dados da empresa" : "Habilidades",
+      icon: isCompany ? Building2 : UserRoundCheck,
+      onPress: () => router.push(isCompany ? "/become-company" : "/become-freelancer"),
+    },
+    ...(isCompany
+      ? [
+          {
+            key: "jobs",
+            label: "Candidaturas",
+            icon: Briefcase,
+            onPress: () => router.push("/minhas-vagas"),
+          },
+        ]
+      : []),
+    {
+      key: "services",
+      label: "Serviços",
+      icon: Sparkles,
+      onPress: () => router.push("/meus-servicos"),
+    },
+    {
+      key: "payments",
+      label: "Pagamentos",
+      icon: Wallet,
+      onPress: () => router.push("/payments"),
+    },
+    {
+      key: "connections",
+      label: "Conexões",
+      icon: Users,
+      onPress: () => router.push("/connections"),
+    },
+    {
+      key: "messages",
+      label: "Mensagens",
+      icon: MessageCircle,
+      onPress: () => router.push("/messages"),
+    },
+    {
+      key: "edit",
+      label: "Editar perfil",
+      icon: Edit3,
+      onPress: () => router.push("/edit-profile"),
+    },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: BG_SOFT }}>
@@ -780,73 +777,120 @@ export default function PerfilScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: insets.bottom + 88,
+          paddingBottom: insets.bottom + 96,
         }}
       >
-        <View style={cardStyle}>
-          <View style={{ flexDirection: "row" }}>
-            <StatBox
-              value={user?.user_type === "empresa" ? "Empresa" : "Profissional"}
-              label="Tipo de conta"
-            />
-            <View style={{ width: 1, backgroundColor: BORDER }} />
-            <StatBox value={user?.province || "—"} label="Província" />
-            <View style={{ width: 1, backgroundColor: BORDER }} />
-            <StatBox value={user?.city || "—"} label="Cidade" />
+        <View style={{ backgroundColor: BG, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 18 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            <View
+              style={{
+                borderWidth: 2,
+                borderColor: ACCENT_LIGHT,
+                borderRadius: 999,
+                padding: 2,
+              }}
+            >
+              <ArmutraAvatar uri={user?.avatar_url} name={user?.name || "Perfil Armutra"} size={86} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: TEXT_MAIN }} numberOfLines={2}>
+                {user?.name || "Perfil Armutra"}
+              </Text>
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: tag.bg,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: radius.pill,
+                  marginTop: 6,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "600", color: tag.text }}>{accountLabelOf(user)}</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
+                <MapPin size={13} color={TEXT_MUTED} />
+                <Text style={{ fontSize: 13, color: TEXT_SUB, flex: 1 }} numberOfLines={1}>
+                  {location}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                <CheckCircle
+                  size={14}
+                  color={user?.is_verified ? ACCENT : TEXT_MUTED}
+                  fill={user?.is_verified ? ACCENT_LIGHT : "transparent"}
+                />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: user?.is_verified ? ACCENT_DARK : TEXT_SUB,
+                    fontWeight: "600",
+                  }}
+                >
+                  {user?.is_verified ? "Perfil verificado" : "Perfil em configuração"}
+                </Text>
+              </View>
+            </View>
           </View>
-
-          <TouchableOpacity
-            onPress={() => router.push("/edit-profile")}
-            style={{
-              marginTop: 16,
-              paddingVertical: 14,
-              borderRadius: radius.md,
-              backgroundColor: ACCENT,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-            activeOpacity={0.85}
-          >
-            <Edit3 size={16} color="#fff" />
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Editar perfil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={openEdit}
-            style={{
-              marginTop: 10,
-              paddingVertical: 12,
-              borderRadius: radius.md,
-              backgroundColor: BG_SOFT,
-              borderWidth: 1,
-              borderColor: BORDER,
-              alignItems: "center",
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={{ color: TEXT_MAIN, fontWeight: "600", fontSize: 14 }}>
-              Edição rápida aqui
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={signOut}
-            style={{
-              marginTop: 10,
-              paddingVertical: 12,
-              borderRadius: radius.md,
-              backgroundColor: BG_SOFT,
-              alignItems: "center",
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={{ color: TEXT_SUB, fontWeight: "700", fontSize: 14 }}>Sair</Text>
-          </TouchableOpacity>
+          {user?.bio ? (
+            <Text style={{ fontSize: 14, color: TEXT_MAIN, lineHeight: 21, marginTop: 14 }}>{user.bio}</Text>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push("/edit-profile")}
+              activeOpacity={0.7}
+              style={{ marginTop: 14, alignSelf: "flex-start" }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: ACCENT }}>Adicionar descrição</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          {shortcuts.map((item) => {
+            const Icon = item.icon;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={item.onPress}
+                activeOpacity={0.85}
+                style={{
+                  width: "48%",
+                  flexGrow: 1,
+                  minHeight: 88,
+                  backgroundColor: BG,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: BORDER,
+                  padding: 14,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Icon size={18} color={ACCENT_DARK} />
+                <Text style={{ fontSize: 14, fontWeight: "800", color: TEXT_MAIN, marginTop: 12 }}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          onPress={openEdit}
+          activeOpacity={0.85}
+          style={{
+            minHeight: 48,
+            borderRadius: radius.md,
+            backgroundColor: BG,
+            borderWidth: 1,
+            borderColor: BORDER,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ color: TEXT_MAIN, fontWeight: "700", fontSize: 14 }}>Edição rápida aqui</Text>
+        </TouchableOpacity>
 
         {editOpen && (
           <EditProfilePanel
@@ -861,86 +905,19 @@ export default function PerfilScreen() {
           />
         )}
 
-        <View style={{ ...cardStyle }}>
-          <SectionTitle title="Sobre" />
-          <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22 }}>
-            Complete o seu perfil para aparecer melhor nas pesquisas do Armutra. Aqui ficam os
-            dados principais da sua conta e as publicações que você criar no aplicativo.
-          </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            {[
-              user?.user_type === "empresa" ? "Empresa" : "Profissional",
-              user?.province,
-              user?.city,
-            ]
-              .filter(Boolean)
-              .map((skill) => (
-                <View
-                  key={skill}
-                  style={{
-                    backgroundColor: tag.bg,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: radius.pill,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: tag.text }}>{skill}</Text>
-                </View>
-              ))}
-          </View>
+        <TouchableOpacity
+          onPress={signOut}
+          style={{
+            minHeight: 48,
+            borderRadius: radius.md,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ color: TEXT_SUB, fontWeight: "700", fontSize: 14 }}>Sair</Text>
+        </TouchableOpacity>
         </View>
-
-        {user?.user_type === "normal" && (
-          <View style={{ ...cardStyle }}>
-            <SectionTitle title="Conta profissional" />
-            <Text style={{ fontSize: 14, color: TEXT_SUB, lineHeight: 22 }}>
-              Configure como quer trabalhar no Armutra.
-            </Text>
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-              <TouchableOpacity
-                onPress={() => router.push("/become-company")}
-                activeOpacity={0.85}
-                style={{
-                  flex: 1,
-                  minHeight: 52,
-                  borderRadius: radius.md,
-                  backgroundColor: ACCENT,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: 8,
-                  paddingHorizontal: 10,
-                }}
-              >
-                <Building2 size={17} color="#fff" />
-                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>Criar empresa</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push("/become-freelancer")}
-                activeOpacity={0.85}
-                style={{
-                  flex: 1,
-                  minHeight: 52,
-                  borderRadius: radius.md,
-                  backgroundColor: ACCENT_LIGHT,
-                  borderWidth: 1,
-                  borderColor: colors.primaryMuted,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: 8,
-                  paddingHorizontal: 10,
-                }}
-              >
-                <UserRoundCheck size={17} color={ACCENT_DARK} />
-                <Text style={{ color: ACCENT_DARK, fontWeight: "800", fontSize: 13 }}>
-                  Virar freelancer
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
       </ScrollView>
     </View>
   );

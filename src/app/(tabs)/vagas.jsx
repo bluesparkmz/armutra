@@ -92,7 +92,11 @@ export default function VagasScreen() {
   });
 
   const filtered = vagas.filter((v) => {
-    const catMatch = selectedCategory === "Todos" || v.category === selectedCategory;
+    const catMatch =
+      selectedCategory === "Todos" ||
+      `${v.title} ${v.description} ${v.raw?.requisitos || ""} ${v.raw?.descricao || ""}`
+        .toLowerCase()
+        .includes(selectedCategory.toLowerCase());
     const searchMatch =
       !search ||
       v.title?.toLowerCase().includes(search.toLowerCase()) ||
