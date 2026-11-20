@@ -182,7 +182,7 @@ function PostCard({ item }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handleLike = async () => {
-    if (liked || !auth?.accessToken || !item.postId) return;
+    if (liked || !auth?.accessToken || !item.id) return;
     Animated.sequence([
       Animated.timing(scale, { toValue: 1.25, duration: 100, useNativeDriver: true }),
       Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
@@ -190,7 +190,10 @@ function PostCard({ item }) {
     setLiked(true);
     setLikesCount((c) => c + 1);
     try {
-      await armutraApi.likePost(item.postId, auth.accessToken);
+      await armutraApi.likePost(item.id, auth.accessToken, {
+        userId: auth.user?.id,
+        targetType: item.type || "post",
+      });
     } catch (error) {
       setLiked(false);
       setLikesCount((c) => Math.max(0, c - 1));
@@ -225,9 +228,9 @@ function PostCard({ item }) {
         </Text>
       )}
 
-      {item.image && (
+      {!!(item.image || item.image_url) && (
         <View style={{ ...feedCardImageBleed, marginBottom: 12 }}>
-          <FullWidthImage uri={item.image} maxHeight={300} />
+          <FullWidthImage uri={item.image || item.image_url} maxHeight={300} />
         </View>
       )}
 
@@ -318,9 +321,9 @@ function ServicoCard({ item }) {
         <TypeBadge label="Serviço" color={ACCENT} />
       </View>
 
-      {item.image && (
+      {!!(item.image || item.image_url) && (
         <View style={{ ...feedCardImageBleed, marginBottom: 12 }}>
-          <FullWidthImage uri={item.image} maxHeight={300} />
+          <FullWidthImage uri={item.image || item.image_url} maxHeight={300} />
         </View>
       )}
 

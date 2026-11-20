@@ -31,6 +31,7 @@ import {
   BG,
   BG_SOFT,
   BORDER,
+  PLACEHOLDER,
   TEXT_MAIN,
   TEXT_SUB,
   radius,
@@ -38,6 +39,13 @@ import {
 
 const categoryOptions = freelancerCategories.filter((category) => category !== "Todos");
 const DEFAULT_PROVINCE = "Cidade de Maputo";
+
+const JOB_TYPES = [
+  { value: "full_time", label: "Full-time" },
+  { value: "part_time", label: "Part-time" },
+  { value: "freelancer", label: "Freelancer" },
+  { value: "contract", label: "Contrato" },
+];
 
 function CreateHeader({ insets, title, subtitle, icon: Icon, onBack }) {
   return (
@@ -106,6 +114,7 @@ export default function CreateContentScreen({ type }) {
     category: "",
     price: "",
     requirements: "",
+    job_type: "full_time",
     salary_min: "",
     salary_max: "",
     province: user?.province || DEFAULT_PROVINCE,
@@ -186,7 +195,10 @@ export default function CreateContentScreen({ type }) {
       name: fileName,
       type: mimeType,
     });
-    const uploaded = await armutraApi.uploadPostImage(formData, token);
+    const uploaded =
+      type === "service"
+        ? await armutraApi.uploadServiceImage(formData, token)
+        : await armutraApi.uploadPostImage(formData, token);
     return uploaded.image_url;
   };
 
@@ -209,11 +221,16 @@ export default function CreateContentScreen({ type }) {
         }
         const imageUrl = hasImage ? await uploadSelectedImage() : null;
         const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
+        const text = content;
         await armutraApi.createPost(
           {
+            author_id: user.id,
+            post_type: imageUrl ? "image" : "text",
+            content: text,
+            image_url: imageUrl,
             tipo_post: "geral",
-            titulo: (content || "Publicação").slice(0, 80),
-            descricao: content || "Publicação com imagem",
+            titulo: text ? text.slice(0, 80) : "",
+            descricao: text,
             localizacao,
             imagens: imageUrl ? [imageUrl] : null,
           },
@@ -229,10 +246,21 @@ export default function CreateContentScreen({ type }) {
         }
         const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
         const preco = form.price ? Number(form.price) : 0;
+        const serviceTitle = form.title.trim();
+        const serviceText = form.description.trim();
         const service = await armutraApi.createService(
           {
-            titulo: form.title.trim(),
-            descricao: form.description.trim(),
+            owner_user_id: user.id,
+            owner_type: user.tipo === "empresa" || user.user_type === "empresa" ? "empresa" : "freelancer",
+            title: serviceTitle,
+            description: serviceText,
+            category: form.category.trim() || "Geral",
+            price: preco,
+            province: form.province,
+            city: form.city,
+            image_url: imageUrl,
+            titulo: serviceTitle,
+            descricao: serviceText,
             categoria: form.category.trim() || "Geral",
             preco,
           },
@@ -240,9 +268,13 @@ export default function CreateContentScreen({ type }) {
         );
         await armutraApi.createPost(
           {
+            author_id: user.id,
+            post_type: imageUrl ? "image" : "text",
+            content: serviceText || serviceTitle,
+            image_url: imageUrl,
             tipo_post: "servico",
-            titulo: form.title.trim(),
-            descricao: form.description.trim(),
+            titulo: serviceTitle,
+            descricao: serviceText,
             salario: preco ? `${preco} MZN` : null,
             localizacao,
             imagens: imageUrl ? [imageUrl] : null,
@@ -260,10 +292,22 @@ export default function CreateContentScreen({ type }) {
         }
         const localizacao = [form.city, form.province].filter(Boolean).join(", ") || user.localizacao || "Moçambique";
         const salario = [form.salary_min, form.salary_max].filter(Boolean).join(" - ");
+        const jobTitle = form.title.trim();
+        const jobText = form.description.trim();
         const job = await armutraApi.createJob(
           {
-            titulo: form.title.trim(),
-            descricao: form.description.trim(),
+            company_user_id: user.id,
+            title: jobTitle,
+            description: jobText,
+            requirements: form.requirements.trim() || "A combinar",
+            job_type: form.job_type || "full_time",
+            category: form.category.trim() || "Geral",
+            salary_min: form.salary_min ? Number(form.salary_min) : null,
+            salary_max: form.salary_max ? Number(form.salary_max) : null,
+            province: form.province,
+            city: form.city,
+            titulo: jobTitle,
+            descricao: jobText,
             requisitos: form.requirements.trim() || "A combinar",
             salario: salario ? `${salario} MZN` : "A negociar",
             localizacao,
@@ -272,9 +316,13 @@ export default function CreateContentScreen({ type }) {
         );
         await armutraApi.createPost(
           {
+            author_id: user.id,
+            post_type: imageUrl ? "image" : "text",
+            content: jobText || jobTitle,
+            image_url: imageUrl,
             tipo_post: "vaga",
-            titulo: form.title.trim(),
-            descricao: form.description.trim(),
+            titulo: jobTitle,
+            descricao: jobText,
             salario: salario ? `${salario} MZN` : "A negociar",
             localizacao,
             imagens: imageUrl ? [imageUrl] : null,
@@ -428,7 +476,7 @@ export default function CreateContentScreen({ type }) {
                 value={form.content}
                 onChangeText={(value) => update("content", value)}
                 placeholder="O que quer partilhar?"
-                placeholderTextColor={TEXT_SUB}
+                placeholderTextColor={PLACEHOLDER}
                 multiline
                 style={[multilineStyle, { minHeight: selectedImage ? 92 : 160 }]}
               />
@@ -455,21 +503,22 @@ export default function CreateContentScreen({ type }) {
                     Galeria
                   </Text>
                 </TouchableOpacity>
-              )}            </>
+              )}
+            </>
           ) : (
             <>
               <TextInput
                 value={form.title}
                 onChangeText={(value) => update("title", value)}
                 placeholder={type === "job" ? "Título da vaga" : "Título do serviço"}
-                placeholderTextColor={TEXT_SUB}
+                placeholderTextColor={PLACEHOLDER}
                 style={inputStyle}
               />
               <TextInput
                 value={form.description}
                 onChangeText={(value) => update("description", value)}
                 placeholder="Descrição"
-                placeholderTextColor={TEXT_SUB}
+                placeholderTextColor={PLACEHOLDER}
                 multiline
                 style={multilineStyle}
               />
@@ -482,7 +531,7 @@ export default function CreateContentScreen({ type }) {
                     <Picker
                       selectedValue={form.category}
                       onValueChange={(value) => update("category", value)}
-                      style={{ color: form.category ? TEXT_MAIN : TEXT_SUB, minHeight: 52 }}
+                      style={{ color: form.category ? TEXT_MAIN : PLACEHOLDER, minHeight: 52 }}
                     >
                       <Picker.Item label="Categoria" value="" />
                       {categoryOptions.map((category) => (
@@ -494,7 +543,7 @@ export default function CreateContentScreen({ type }) {
                     value={form.price}
                     onChangeText={(value) => update("price", value)}
                     placeholder="Preço (MZN)"
-                    placeholderTextColor={TEXT_SUB}
+                    placeholderTextColor={PLACEHOLDER}
                     keyboardType="numeric"
                     style={inputStyle}
                   />
@@ -505,15 +554,43 @@ export default function CreateContentScreen({ type }) {
                     value={form.requirements}
                     onChangeText={(value) => update("requirements", value)}
                     placeholder="Requisitos, separados por vírgula"
-                    placeholderTextColor={TEXT_SUB}
+                    placeholderTextColor={PLACEHOLDER}
                     style={inputStyle}
                   />
+
+                  {/* Tipo de contrato */}
+                  <View style={[inputStyle, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+                    <Picker
+                      selectedValue={form.job_type}
+                      onValueChange={(value) => update("job_type", value)}
+                      style={{ color: TEXT_MAIN, minHeight: 52 }}
+                    >
+                      {JOB_TYPES.map((jt) => (
+                        <Picker.Item key={jt.value} label={jt.label} value={jt.value} />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  {/* Categoria */}
+                  <View style={[inputStyle, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+                    <Picker
+                      selectedValue={form.category}
+                      onValueChange={(value) => update("category", value)}
+                      style={{ color: form.category ? TEXT_MAIN : PLACEHOLDER, minHeight: 52 }}
+                    >
+                      <Picker.Item label="Categoria da vaga" value="" />
+                      {categoryOptions.map((cat) => (
+                        <Picker.Item key={cat} label={cat} value={cat} />
+                      ))}
+                    </Picker>
+                  </View>
+
                   <View style={{ flexDirection: "row", gap: 10 }}>
                     <TextInput
                       value={form.salary_min}
                       onChangeText={(value) => update("salary_min", value)}
                       placeholder="Salário mín. (MZN)"
-                      placeholderTextColor={TEXT_SUB}
+                      placeholderTextColor={PLACEHOLDER}
                       keyboardType="numeric"
                       style={[inputStyle, { flex: 1 }]}
                     />
@@ -521,7 +598,7 @@ export default function CreateContentScreen({ type }) {
                       value={form.salary_max}
                       onChangeText={(value) => update("salary_max", value)}
                       placeholder="Salário máx. (MZN)"
-                      placeholderTextColor={TEXT_SUB}
+                      placeholderTextColor={PLACEHOLDER}
                       keyboardType="numeric"
                       style={[inputStyle, { flex: 1 }]}
                     />

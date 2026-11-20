@@ -25,7 +25,7 @@ import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
 import { armutraApi, authApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
-import { ACCENT, BG_SOFT, BORDER, TEXT_MAIN } from "@/theme";
+import { ACCENT, BG_SOFT, BORDER, PLACEHOLDER, TEXT_MAIN } from "@/theme";
 
 const BG = BG_SOFT;
 
@@ -110,7 +110,7 @@ export default function EditProfileScreen() {
       name: fileName,
       type: mimeType,
     });
-    const uploaded = await armutraApi.uploadPostImage(formData, token);
+    const uploaded = await armutraApi.uploadAvatar(formData, token);
     return uploaded.image_url;
   };
 
@@ -131,6 +131,7 @@ export default function EditProfileScreen() {
 
       const payload = {
         name: form.name.trim(),
+        phone: form.phone.trim() || null,
         bio: form.bio.trim() || null,
         province: form.province.trim(),
         city: form.city.trim(),
@@ -141,9 +142,10 @@ export default function EditProfileScreen() {
           nome_empresa: form.name.trim(),
           website: form.website.trim() || null,
         };
-      } else if (form.profession.trim()) {
+      } else if (form.profession.trim() || form.website.trim()) {
+        payload.website = form.website.trim() || null;
         payload.candidato = {
-          habilidades: [form.profession.trim()],
+          habilidades: form.profession.trim() ? [form.profession.trim()] : [],
           experiencia: form.bio.trim() || null,
         };
       }
@@ -244,7 +246,7 @@ export default function EditProfileScreen() {
               />
             ) : (
               <ArmutraAvatar
-                uri={user?.avatar}
+                uri={user?.avatar_url || user?.foto_perfil}
                 name={user?.name}
                 size={120}
                 borderRadius={60}
@@ -285,6 +287,7 @@ export default function EditProfileScreen() {
           value={form.name}
           onChangeText={(value) => update("name", value)}
           placeholder="Nome completo"
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={inputStyle}
@@ -295,6 +298,7 @@ export default function EditProfileScreen() {
           placeholder="Email"
           keyboardType="email-address"
           autoCapitalize="none"
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={inputStyle}
@@ -304,6 +308,7 @@ export default function EditProfileScreen() {
           onChangeText={(value) => update("phone", value)}
           placeholder="Telefone"
           keyboardType="phone-pad"
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={inputStyle}
@@ -315,6 +320,7 @@ export default function EditProfileScreen() {
           value={form.profession}
           onChangeText={(value) => update("profession", value)}
           placeholder="Profissão ou especialidade"
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={inputStyle}
@@ -325,6 +331,7 @@ export default function EditProfileScreen() {
           placeholder="Sobre você (bio)"
           multiline
           numberOfLines={4}
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={[inputStyle, { minHeight: 100, textAlignVertical: "top" }]}
@@ -334,6 +341,7 @@ export default function EditProfileScreen() {
           onChangeText={(value) => update("website", value)}
           placeholder="Website ou portfólio"
           keyboardType="url"
+          placeholderTextColor={PLACEHOLDER}
           selectionColor={ACCENT}
           cursorColor={ACCENT}
           style={inputStyle}

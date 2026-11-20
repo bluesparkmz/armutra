@@ -1,8 +1,9 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Bell, UserRound, Users, Wallet, Megaphone, FileText, LogOut, ChevronRight } from "lucide-react-native";
+import { ArrowLeft, Bell, UserRound, Users, Wallet, Megaphone, FileText, LogOut, ChevronRight, KeyRound } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -106,7 +107,8 @@ function SettingRow({
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { auth, logout } = useAuth();
+  const { auth, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const user = auth?.user;
 
   const handleLogout = () => {
@@ -117,8 +119,9 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await logout();
-            router.replace("/");
+            await signOut();
+            queryClient.clear();
+            router.replace("/(tabs)/perfil");
           } catch (error) {
             logError("logout", error);
             Alert.alert("Erro", "Falha ao sair. Tente novamente.");
@@ -200,6 +203,12 @@ export default function SettingsScreen() {
             title="Editar perfil"
             subtitle="Nome, foto e localização"
             onPress={() => router.push("/edit-profile")}
+          />
+          <SettingRow
+            icon={KeyRound}
+            title="Alterar senha"
+            subtitle="Senha atual e nova senha"
+            onPress={() => router.push("/change-password")}
           />
           <SettingRow
             icon={Users}

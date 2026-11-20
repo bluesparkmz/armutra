@@ -10,7 +10,7 @@ import { getDefaultDistrict } from "@/data/mozambiqueLocationsData";
 import { authApi } from "@/utils/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { logError } from "@/utils/logger";
-import { ACCENT, BG_SOFT } from "@/theme";
+import { ACCENT, BG_SOFT, PLACEHOLDER } from "@/theme";
 
 const BG = BG_SOFT;
 
@@ -185,6 +185,7 @@ export default function BecomeProfileScreen({ type }) {
               value={form.company_name}
               onChangeText={(value) => update("company_name", value)}
               placeholder="Nome da empresa"
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={inputStyle}
@@ -193,6 +194,7 @@ export default function BecomeProfileScreen({ type }) {
               value={form.industry}
               onChangeText={(value) => update("industry", value)}
               placeholder="Area da empresa"
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={inputStyle}
@@ -202,6 +204,7 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("description", value)}
               placeholder="Descricao da empresa"
               multiline
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={multilineStyle}
@@ -213,6 +216,7 @@ export default function BecomeProfileScreen({ type }) {
               value={form.profession}
               onChangeText={(value) => update("profession", value)}
               placeholder="Profissao"
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={inputStyle}
@@ -222,7 +226,7 @@ export default function BecomeProfileScreen({ type }) {
                 selectedValue={form.category}
                 onValueChange={(value) => update("category", value)}
                 dropdownIconColor={ACCENT}
-                style={{ color: form.category ? "#0F172A" : "#94A3B8", minHeight: 52 }}
+                style={{ color: form.category ? "#0F172A" : PLACEHOLDER, minHeight: 52 }}
               >
                 <Picker.Item label="Categoria" value="" />
                 {categoryOptions.map((category) => (
@@ -234,6 +238,7 @@ export default function BecomeProfileScreen({ type }) {
               value={form.skills}
               onChangeText={(value) => update("skills", value)}
               placeholder="Habilidades, separadas por virgula"
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={inputStyle}
@@ -243,6 +248,7 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("hourly_rate", value)}
               placeholder="Preco por hora"
               keyboardType="numeric"
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={inputStyle}
@@ -252,6 +258,7 @@ export default function BecomeProfileScreen({ type }) {
               onChangeText={(value) => update("bio", value)}
               placeholder="Fale sobre o seu trabalho"
               multiline
+              placeholderTextColor={PLACEHOLDER}
               selectionColor={ACCENT}
               cursorColor={ACCENT}
               style={multilineStyle}

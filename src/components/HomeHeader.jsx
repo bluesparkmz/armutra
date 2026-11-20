@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
 import { armutraApi } from "@/utils/api";
 import useAuth from "@/utils/auth/useAuth";
-import { ACCENT, BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
+import { ACCENT, BG_SOFT, BORDER, PLACEHOLDER, TEXT_MAIN, TEXT_SUB, getGreeting } from "@/theme";
 
 /** Barra fixa ~50px: avatar + saudação + ícones (ou só botão Entrar sem sessão) */
 export function HomeTopBar({ userName, userAvatar, onAvatarPress, isLoggedIn = !!userName, onLoginPress }) {
@@ -154,7 +154,7 @@ export function HomeSearchBar({
           value={searchText}
           onChangeText={onSearchChange}
           placeholder={searchPlaceholder}
-          placeholderTextColor={TEXT_SUB}
+          placeholderTextColor={PLACEHOLDER}
           style={{
             flex: 1,
             fontSize: 15,

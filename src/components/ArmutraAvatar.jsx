@@ -12,7 +12,7 @@ function normalizeUri(uri) {
   return value.length > 0 ? value : null;
 }
 
-export default function ArmutraAvatar({ uri, name, size = 44, borderRadius, style }) {
+export default function ArmutraAvatar({ uri, name, size = 44, borderRadius, style, online = false }) {
   const [error, setError] = useState(false);
   const imageUri = normalizeUri(uri);
   const radius = borderRadius !== undefined ? borderRadius : size / 2;
@@ -35,8 +35,8 @@ export default function ArmutraAvatar({ uri, name, size = 44, borderRadius, styl
     overflow: "hidden",
   };
 
-  if (error || !imageUri) {
-    return (
+  const face =
+    error || !imageUri ? (
       <View
         style={[
           baseStyle,
@@ -45,22 +45,39 @@ export default function ArmutraAvatar({ uri, name, size = 44, borderRadius, styl
             alignItems: "center",
             justifyContent: "center",
           },
-          style,
         ]}
       >
         <Text style={{ color: "#fff", fontWeight: "700", fontSize: size * 0.38 }}>
           {initials}
         </Text>
       </View>
+    ) : (
+      <Image
+        source={{ uri: imageUri }}
+        style={baseStyle}
+        contentFit="cover"
+        onError={() => setError(true)}
+      />
     );
-  }
 
   return (
-    <Image
-      source={{ uri: imageUri }}
-      style={[baseStyle, style]}
-      contentFit="cover"
-      onError={() => setError(true)}
-    />
+    <View style={[{ width: size, height: size }, style]}>
+      {face}
+      {online ? (
+        <View
+          style={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            width: Math.max(10, Math.round(size * 0.22)),
+            height: Math.max(10, Math.round(size * 0.22)),
+            borderRadius: 99,
+            backgroundColor: "#16A34A",
+            borderWidth: 2,
+            borderColor: "#fff",
+          }}
+        />
+      ) : null}
+    </View>
   );
 }

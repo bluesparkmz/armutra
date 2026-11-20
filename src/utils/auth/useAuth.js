@@ -30,8 +30,8 @@ export const useAuth = () => {
     // Auth is handled directly in the Perfil tab.
   }, []);
 
-  const signOut = useCallback(() => {
-    setAuth(null);
+  const signOut = useCallback(async () => {
+    await setAuth(null);
     close();
   }, [close, setAuth]);
 

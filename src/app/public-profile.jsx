@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import ArmutraAvatar from "@/components/ArmutraAvatar";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
 import { armutraApi, mediaUrl } from "@/utils/api";
 import useAuth from "@/utils/auth/useAuth";
+import { refreshPresence, useOnline } from "@/utils/presence";
 import { logError } from "@/utils/logger";
 import {
   ACCENT,
@@ -120,6 +121,11 @@ export default function PublicProfileScreen() {
   const queryClient = useQueryClient();
   const targetUserId = data?.id || id;
   const isMe = !!targetUserId && auth?.user?.id === targetUserId;
+  const profileOnline = useOnline(targetUserId);
+
+  useEffect(() => {
+    refreshPresence(targetUserId);
+  }, [targetUserId]);
 
   const { data: connectionStatus } = useQuery({
     queryKey: ["connection-status", targetUserId, !!token],
@@ -133,26 +139,34 @@ export default function PublicProfileScreen() {
         ? armutraApi.followUser(targetUserId, token)
         : armutraApi.unfollowUser(targetUserId, token),
     onSuccess: (result) => {
-      queryClient.setQueryData(["connection-status", targetUserId, !!token], result);
+      // actualiza o estado localmente de imediato
+      queryClient.setQueryData(["connection-status", targetUserId, !!token], (prev) => ({
+        ...(prev || {}),
+        ...(result || {}),
+        a_seguir: result?.a_seguir ?? result?.is_following,
+        a_seguir_utilizador: result?.a_seguir ?? result?.is_following,
+        is_following: result?.a_seguir ?? result?.is_following,
+      }));
+      // actualiza contagem de seguidores
+      queryClient.invalidateQueries({ queryKey: ["connection-counts", targetUserId] });
     },
     onError: (mutationError) => {
-      logError("follow-user", mutationError, { targetUserId });
-      const raw = mutationError?.message || "";
-      const missing = /not found|não encontrado|nao encontrado/i.test(raw);
+      logError("follow-user", mutationError?.message, { targetUserId });
       Alert.alert(
         "Conectar",
-        missing ? "Seguir ainda não está disponível nesta API." : raw || "Não foi possível actualizar a conexão."
+        mutationError?.message || "Não foi possível actualizar a conexão."
       );
     },
   });
 
   const { data: counts } = useQuery({
-    queryKey: ["connection-counts", targetUserId, connectionStatus?.seguidores],
+    queryKey: ["connection-counts", targetUserId],
     enabled: !!targetUserId,
     queryFn: () => armutraApi.getConnectionCounts(targetUserId),
   });
 
-  const isFollowing = !!connectionStatus?.a_seguir_utilizador;
+  const isFollowing =
+    !!(connectionStatus?.a_seguir || connectionStatus?.a_seguir_utilizador || connectionStatus?.is_following);
   const isCompany = data?.tipo === "empresa" || kind === "empresa";
   const related = useQuery({
     queryKey: ["profile-related", id, isCompany],
@@ -237,7 +251,7 @@ export default function PublicProfileScreen() {
               padding: 2,
             }}
           >
-            <ArmutraAvatar uri={profile?.avatar} name={profile?.name || "Armutra"} size={92} />
+            <ArmutraAvatar uri={profile?.avatar} name={profile?.name || "Armutra"} size={92} online={profileOnline} />
           </View>
           <Text
             style={{

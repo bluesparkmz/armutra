@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { ACCENT } from "@/theme";
+import { ACCENT, PLACEHOLDER } from "@/theme";
 import {
   getDefaultDistrict,
   getDistrictsByProvince,
@@ -63,7 +63,7 @@ export default function LocationFields({
           enabled={districtOptions.length > 0}
           style={{
             ...pickerStyle,
-            color: city ? "#0F172A" : "#94A3B8",
+            color: city ? "#0F172A" : PLACEHOLDER,
           }}
         >
           <Picker.Item label="Cidade/Distrito" value="" />

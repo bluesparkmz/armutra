@@ -26,6 +26,7 @@ import {
   BORDER,
   CARD,
   TEXT_MAIN,
+  PLACEHOLDER,
   TEXT_MUTED,
   TEXT_SUB,
 } from "@/theme";
@@ -342,7 +343,7 @@ export default function BoostScreen() {
                   value={msisdn}
                   onChangeText={setMsisdn}
                   placeholder="84xxxxxxx"
-                  placeholderTextColor={TEXT_MUTED}
+                  placeholderTextColor={PLACEHOLDER}
                   keyboardType="phone-pad"
                   maxLength={16}
                   editable={!startBoost.isPending}

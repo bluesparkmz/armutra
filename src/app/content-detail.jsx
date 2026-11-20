@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -10,13 +11,16 @@ import {
   Briefcase,
   CheckCircle,
   Clock,
+  FileText,
   Heart,
   MapPin,
   MessageCircle,
+  Paperclip,
   Send,
   Share2,
   Sparkles,
   UserRound,
+  X,
   Zap,
 } from "lucide-react-native";
 import ArmutraAvatar from "@/components/ArmutraAvatar";
@@ -30,6 +34,7 @@ import {
   ACCENT,
   ACCENT_DARK,
   TEXT_MAIN,
+  PLACEHOLDER,
   TEXT_SUB,
   BG_SOFT as BG,
   CARD,
@@ -206,9 +211,13 @@ export default function ContentDetailScreen() {
   const token = auth?.accessToken;
   const [liked, setLiked] = useState(false);
   const [message, setMessage] = useState(null);
+  const [applied, setApplied] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [note, setNote] = useState("");
+  const [cvFile, setCvFile] = useState(null);   // { name, uri, mimeType }
+  const [cvUrl, setCvUrl] = useState(null);     // URL after upload
+  const [cvUploading, setCvUploading] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["content-detail", type, id],
@@ -229,13 +238,13 @@ export default function ContentDetailScreen() {
   const Icon = detail?.icon || Send;
   const showLoader = isLoading && !detail;
 
-  const isPost = data?.source === "post" || !!data?.tipo_post || !!data?.postId;
-  const postId = isPost ? data?.postId || data?.id : null;
+  const targetId = data?.postId || data?.id || id;
+  const targetType = type === "servico" ? "service" : type === "vaga" ? "job" : "post";
 
   const commentsQuery = useQuery({
-    queryKey: ["comments", postId],
-    enabled: !!postId,
-    queryFn: () => armutraApi.getComments(postId),
+    queryKey: ["comments", targetType, targetId],
+    enabled: !!targetId,
+    queryFn: () => armutraApi.getComments(targetId, targetType),
   });
 
   const actionMutation = useMutation({
@@ -253,36 +262,72 @@ export default function ContentDetailScreen() {
         );
       }
       if (type === "vaga") {
+        if (applied) throw new Error("Já te candidataste a esta vaga.");
         const jobId = data?.jobId || data?.job_id || (data?.empresa_user_id ? data.id : id);
         return armutraApi.applyToJob(
           jobId,
-          { mensagem: note.trim() || "Tenho interesse nesta vaga." },
+          { mensagem: note.trim() || "Tenho interesse nesta vaga.", cv_url: cvUrl, resume_url: cvUrl },
           token
         );
       }
       return null;
     },
-    onSuccess: () => setMessage(type === "vaga" ? "Candidatura enviada." : "Mensagem enviada."),
+    onSuccess: () => {
+      if (type === "vaga") setApplied(true);
+      setMessage(type === "vaga" ? "Candidatura enviada!" : "Mensagem enviada.");
+    },
     onError: (mutationError) => {
       setMessage(mutationError.message);
       logError("content-detail-action", mutationError, { type, id });
     },
   });
 
+  async function pickCv() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "application/msword",
+               "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      setCvFile({ name: asset.name, uri: asset.uri, mimeType: asset.mimeType });
+      setCvUrl(null);
+      setCvUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", { uri: asset.uri, name: asset.name, type: asset.mimeType || "application/pdf" });
+        const data = await armutraApi.uploadDocument(formData, token);
+        const url = data?.document_url || data?.url || data?.file_url || null;
+        setCvUrl(url);
+      } catch (uploadErr) {
+        logError("cv-upload", uploadErr);
+        setMessage("Erro ao carregar o documento. Tente novamente.");
+        setCvFile(null);
+      } finally {
+        setCvUploading(false);
+      }
+    } catch (err) {
+      logError("cv-pick", err);
+    }
+  }
+
   const likeMutation = useMutation({
-    mutationFn: () => armutraApi.likePost(postId, token),
+    mutationFn: () =>
+      armutraApi.likePost(targetId, token, { userId: user?.id, targetType }),
     onSuccess: () => setLiked(true),
     onError: (mutationError) => setMessage(mutationError.message),
   });
 
   const shareMutation = useMutation({
-    mutationFn: () => armutraApi.sharePost(postId, token),
+    mutationFn: () => armutraApi.sharePost(targetId, token),
     onSuccess: () => setMessage("Publicação partilhada."),
     onError: (mutationError) => setMessage(mutationError.message),
   });
 
   const commentMutation = useMutation({
-    mutationFn: () => armutraApi.commentPost(postId, comment.trim(), token),
+    mutationFn: () =>
+      armutraApi.commentPost(targetId, comment.trim(), token, { userId: user?.id, targetType }),
     onSuccess: () => {
       setComment("");
       setMessage("Comentário publicado.");
@@ -357,6 +402,62 @@ export default function ContentDetailScreen() {
                 size={44}
                 borderRadius={22}
               />
+              
+
+              {/* Anexar CV — só para vagas */}
+              {type === "vaga" && !applied && (
+                <View style={{ marginBottom: 10 }}>
+                  {cvFile ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: cvUrl ? ACCENT : BORDER,
+                        backgroundColor: cvUrl ? ACCENT + "12" : BG,
+                      }}
+                    >
+                      <FileText size={16} color={cvUrl ? ACCENT : TEXT_SUB} />
+                      <Text
+                        style={{ flex: 1, color: cvUrl ? ACCENT_DARK : TEXT_SUB, fontSize: 12, fontWeight: "600" }}
+                        numberOfLines={1}
+                      >
+                        {cvUploading ? "A carregar..." : cvFile.name}
+                      </Text>
+                      {!cvUploading && (
+                        <TouchableOpacity onPress={() => { setCvFile(null); setCvUrl(null); }}>
+                          <X size={14} color={TEXT_SUB} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={pickCv}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderStyle: "dashed",
+                        borderColor: BORDER,
+                        backgroundColor: BG,
+                      }}
+                    >
+                      <Paperclip size={16} color={TEXT_SUB} />
+                      <Text style={{ color: TEXT_SUB, fontSize: 12, fontWeight: "600" }}>
+                        Anexar CV / Documento (PDF, DOC)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={{ color: TEXT_MAIN, fontSize: 15, fontWeight: "700" }} numberOfLines={1}>
                   {detail.owner || "Armutra"}
@@ -412,7 +513,8 @@ export default function ContentDetailScreen() {
               }}
             >
               <Text style={{ color: TEXT_SUB, fontSize: 13 }}>
-                {(detail.likes || 0) + (liked ? 1 : 0)} gostos · {detail.comments || 0} comentários
+                {(detail.likes || 0) + (liked ? 1 : 0)} gostos ·{" "}
+                {commentsQuery.data ? commentsQuery.data.length : detail.comments || 0} comentários
               </Text>
             </View>
             <View
@@ -437,30 +539,144 @@ export default function ContentDetailScreen() {
                     setMessage("Entre na sua conta para gostar.");
                     return;
                   }
-                  if (!postId) return;
+                  if (!targetId) return;
                   likeMutation.mutate();
                 }}
               />
+              
+
+              {/* Anexar CV — só para vagas */}
+              {type === "vaga" && !applied && (
+                <View style={{ marginBottom: 10 }}>
+                  {cvFile ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: cvUrl ? ACCENT : BORDER,
+                        backgroundColor: cvUrl ? ACCENT + "12" : BG,
+                      }}
+                    >
+                      <FileText size={16} color={cvUrl ? ACCENT : TEXT_SUB} />
+                      <Text
+                        style={{ flex: 1, color: cvUrl ? ACCENT_DARK : TEXT_SUB, fontSize: 12, fontWeight: "600" }}
+                        numberOfLines={1}
+                      >
+                        {cvUploading ? "A carregar..." : cvFile.name}
+                      </Text>
+                      {!cvUploading && (
+                        <TouchableOpacity onPress={() => { setCvFile(null); setCvUrl(null); }}>
+                          <X size={14} color={TEXT_SUB} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={pickCv}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderStyle: "dashed",
+                        borderColor: BORDER,
+                        backgroundColor: BG,
+                      }}
+                    >
+                      <Paperclip size={16} color={TEXT_SUB} />
+                      <Text style={{ color: TEXT_SUB, fontSize: 12, fontWeight: "600" }}>
+                        Anexar CV / Documento (PDF, DOC)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               <Action icon={MessageCircle} label="Comentar" />
               <Action
                 icon={Share2}
                 label="Partilhar"
                 onPress={() => {
-                  if (!token || !postId) return;
+                  if (!token || !targetId) return;
                   shareMutation.mutate();
                 }}
               />
+              
+
+              {/* Anexar CV — só para vagas */}
+              {type === "vaga" && !applied && (
+                <View style={{ marginBottom: 10 }}>
+                  {cvFile ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: cvUrl ? ACCENT : BORDER,
+                        backgroundColor: cvUrl ? ACCENT + "12" : BG,
+                      }}
+                    >
+                      <FileText size={16} color={cvUrl ? ACCENT : TEXT_SUB} />
+                      <Text
+                        style={{ flex: 1, color: cvUrl ? ACCENT_DARK : TEXT_SUB, fontSize: 12, fontWeight: "600" }}
+                        numberOfLines={1}
+                      >
+                        {cvUploading ? "A carregar..." : cvFile.name}
+                      </Text>
+                      {!cvUploading && (
+                        <TouchableOpacity onPress={() => { setCvFile(null); setCvUrl(null); }}>
+                          <X size={14} color={TEXT_SUB} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={pickCv}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderStyle: "dashed",
+                        borderColor: BORDER,
+                        backgroundColor: BG,
+                      }}
+                    >
+                      <Paperclip size={16} color={TEXT_SUB} />
+                      <Text style={{ color: TEXT_SUB, fontSize: 12, fontWeight: "600" }}>
+                        Anexar CV / Documento (PDF, DOC)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               <Action icon={Bookmark} label="Guardar" />
             </View>
 
-            {!!postId && (
+            {!!targetId && (
               <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
                 {(commentsQuery.data || []).map((item) => (
                   <View key={item.id}>
                     <Text style={{ color: TEXT_MAIN, fontSize: 13, fontWeight: "700" }}>
                       {item.autor_nome || "Utilizador"}
                     </Text>
-                    <Text style={{ color: TEXT_SUB, fontSize: 14, marginTop: 2 }}>{item.conteudo}</Text>
+                    <Text style={{ color: TEXT_SUB, fontSize: 14, marginTop: 2 }}>
+                      {item.conteudo || item.content}
+                    </Text>
                   </View>
                 ))}
                 <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
@@ -468,7 +684,7 @@ export default function ContentDetailScreen() {
                     value={comment}
                     onChangeText={setComment}
                     placeholder="Escreva um comentário"
-                    placeholderTextColor={TEXT_SUB}
+                    placeholderTextColor={PLACEHOLDER}
                     style={{
                       flex: 1,
                       minHeight: 44,
@@ -480,6 +696,62 @@ export default function ContentDetailScreen() {
                       backgroundColor: BG,
                     }}
                   />
+              
+
+              {/* Anexar CV — só para vagas */}
+              {type === "vaga" && !applied && (
+                <View style={{ marginBottom: 10 }}>
+                  {cvFile ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: cvUrl ? ACCENT : BORDER,
+                        backgroundColor: cvUrl ? ACCENT + "12" : BG,
+                      }}
+                    >
+                      <FileText size={16} color={cvUrl ? ACCENT : TEXT_SUB} />
+                      <Text
+                        style={{ flex: 1, color: cvUrl ? ACCENT_DARK : TEXT_SUB, fontSize: 12, fontWeight: "600" }}
+                        numberOfLines={1}
+                      >
+                        {cvUploading ? "A carregar..." : cvFile.name}
+                      </Text>
+                      {!cvUploading && (
+                        <TouchableOpacity onPress={() => { setCvFile(null); setCvUrl(null); }}>
+                          <X size={14} color={TEXT_SUB} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={pickCv}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderStyle: "dashed",
+                        borderColor: BORDER,
+                        backgroundColor: BG,
+                      }}
+                    >
+                      <Paperclip size={16} color={TEXT_SUB} />
+                      <Text style={{ color: TEXT_SUB, fontSize: 12, fontWeight: "600" }}>
+                        Anexar CV / Documento (PDF, DOC)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
                   <TouchableOpacity
                     onPress={() => {
                       if (!token) {
@@ -548,7 +820,7 @@ export default function ContentDetailScreen() {
                 value={note}
                 onChangeText={setNote}
                 placeholder={type === "vaga" ? "Mensagem para a empresa" : "Mensagem para o prestador"}
-                placeholderTextColor={TEXT_SUB}
+                placeholderTextColor={PLACEHOLDER}
                 style={{
                   minHeight: 44,
                   borderWidth: 1,
@@ -560,6 +832,60 @@ export default function ContentDetailScreen() {
                   backgroundColor: BG,
                 }}
               />
+              {/* Anexar CV — só para vagas */}
+              {type === "vaga" && !applied && (
+                <View style={{ marginBottom: 10 }}>
+                  {cvFile ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: cvUrl ? ACCENT : BORDER,
+                        backgroundColor: cvUrl ? ACCENT + "12" : BG,
+                      }}
+                    >
+                      <FileText size={16} color={cvUrl ? ACCENT : TEXT_SUB} />
+                      <Text
+                        style={{ flex: 1, color: cvUrl ? ACCENT_DARK : TEXT_SUB, fontSize: 12, fontWeight: "600" }}
+                        numberOfLines={1}
+                      >
+                        {cvUploading ? "A carregar..." : cvFile.name}
+                      </Text>
+                      {!cvUploading && (
+                        <TouchableOpacity onPress={() => { setCvFile(null); setCvUrl(null); }}>
+                          <X size={14} color={TEXT_SUB} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={pickCv}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderStyle: "dashed",
+                        borderColor: BORDER,
+                        backgroundColor: BG,
+                      }}
+                    >
+                      <Paperclip size={16} color={TEXT_SUB} />
+                      <Text style={{ color: TEXT_SUB, fontSize: 12, fontWeight: "600" }}>
+                        Anexar CV / Documento (PDF, DOC)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               {!!message && (
                 <View
                   style={{
@@ -594,20 +920,24 @@ export default function ContentDetailScreen() {
                 </View>
                 <TouchableOpacity
                   onPress={() => actionMutation.mutate()}
-                  disabled={actionMutation.isPending}
+                  disabled={actionMutation.isPending || (type === "vaga" && applied)}
                   activeOpacity={0.85}
                   style={{
                     flex: 1,
                     minHeight: 46,
                     borderRadius: 12,
-                    backgroundColor: ACCENT,
+                    backgroundColor: type === "vaga" && applied ? "#16A34A" : ACCENT,
                     alignItems: "center",
                     justifyContent: "center",
                     opacity: actionMutation.isPending ? 0.65 : 1,
                   }}
                 >
                   <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-                    {actionMutation.isPending ? "A enviar..." : detail.cta}
+                    {actionMutation.isPending
+                      ? "A enviar..."
+                      : type === "vaga" && applied
+                      ? "✓ Candidatura enviada"
+                      : detail.cta}
                   </Text>
                 </TouchableOpacity>
               </View>

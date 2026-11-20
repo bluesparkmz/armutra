@@ -1,4 +1,5 @@
 import { useAuth } from "@/utils/auth/useAuth";
+import { usePresenceConnection } from "@/utils/presence";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -16,6 +17,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function PresenceConnection() {
+  const { auth } = useAuth();
+  usePresenceConnection(auth?.accessToken || null);
+  return null;
+}
 
 export default function RootLayout() {
   const { initiate, isReady } = useAuth();
@@ -36,6 +43,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <PresenceConnection />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
           <Stack.Screen name="index" />
@@ -58,6 +66,7 @@ export default function RootLayout() {
           <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+          <Stack.Screen name="change-password" options={{ headerShown: false }} />
         </Stack>
       </GestureHandlerRootView>
     </QueryClientProvider>

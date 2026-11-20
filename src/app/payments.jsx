@@ -27,6 +27,7 @@ import {
   BORDER,
   CARD,
   TEXT_MAIN,
+  PLACEHOLDER,
   TEXT_MUTED,
   TEXT_SUB,
 } from "@/theme";
@@ -55,7 +56,7 @@ function Field({ label, hint, ...props }) {
         {label}
       </Text>
       <TextInput
-        placeholderTextColor={TEXT_MUTED}
+        placeholderTextColor={PLACEHOLDER}
         selectionColor={ACCENT}
         cursorColor={ACCENT}
         {...props}

@@ -8,6 +8,8 @@ export const ACCENT_MUTED = "#BBF7D0";
 export const TEXT_MAIN = "#111827";
 export const TEXT_SUB = "#6B7280";
 export const TEXT_MUTED = "#9CA3AF";
+/** Texto de exemplo nos campos. Mais escuro que o cinza suave, para se ler no fundo branco. */
+export const PLACEHOLDER = "#374151";
 export const BG = "#FFFFFF";
 export const BG_SOFT = "#F9FAFB";
 export const CARD = "#FFFFFF";
@@ -25,6 +27,7 @@ export const colors = {
   text: TEXT_MAIN,
   textSecondary: TEXT_SUB,
   textMuted: TEXT_MUTED,
+  placeholder: PLACEHOLDER,
   background: BG_SOFT,
   surface: CARD,
   border: BORDER,

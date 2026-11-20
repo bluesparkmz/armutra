@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { ArrowLeft, Search, X } from "lucide-react-native";
 import ScreenFixedHeader from "@/components/ScreenFixedHeader";
-import { BG_SOFT, BORDER, TEXT_MAIN, TEXT_SUB } from "@/theme";
+import { BG_SOFT, BORDER, PLACEHOLDER, TEXT_MAIN, TEXT_SUB } from "@/theme";
 
 /** Só a barra superior fixa (~48px): voltar + título + lupa */
 export default function ListScreenHeader({
@@ -54,7 +54,7 @@ export default function ListScreenHeader({
               value={searchValue}
               onChangeText={onSearchChange}
               placeholder={searchPlaceholder}
-              placeholderTextColor={TEXT_SUB}
+              placeholderTextColor={PLACEHOLDER}
               autoFocus
               returnKeyType="search"
               style={{
